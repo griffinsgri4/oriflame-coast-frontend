@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 40" role="img" aria-label="Oriflame Sweden">
+  <title>Oriflame Sweden</title>
+  <rect width="220" height="40" fill="none"/>
+  <!-- Wordmark -->
+  <text x="4" y="20" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="6" fill="#666666">ORIFLAME</text>
+  <!-- Subline: SWEDEN with horizontal rules -->
+  <line x1="6" y1="30" x2="78" y2="30" stroke="#B0B0B0" stroke-width="1"/>
+  <text x="84" y="33" font-family="Inter, Arial, sans-serif" font-size="10" letter-spacing="4" fill="#8A8A8A">SWEDEN</text>
+  <line x1="150" y1="30" x2="214" y2="30" stroke="#B0B0B0" stroke-width="1"/>
+</svg>
