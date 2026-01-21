@@ -10,11 +10,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@next/font'],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
-    domains: ['fonts.gstatic.com', 'fonts.googleapis.com'],
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost', port: '8000', pathname: '/storage/**' },
       { protocol: 'http', hostname: '127.0.0.1', port: '8000', pathname: '/storage/**' },
@@ -22,6 +18,10 @@ const nextConfig = {
       { protocol: 'http', hostname: '192.168.0.104', port: '8000', pathname: '/storage/**' },
     ],
   },
+  // Silence the conflict error between Turbopack and webpack config (from next-pwa)
+  // We can try to use Turbopack, or if it fails, we might need to use --webpack in build script
+  // Adding this empty object silences the "mistake" error.
+  turbopack: {},
 };
 
 module.exports = withPWA(nextConfig);
