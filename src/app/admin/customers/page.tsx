@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Eye, Edit, Trash, Users, Mail, Phone, MapPin } from 'lucide-react';
-import { withAuth } from '@/contexts/AuthContext';
+import { withAdmin } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { User } from '@/lib/types';
 
@@ -54,23 +54,23 @@ function AdminCustomersPage() {
   }, [currentPage, searchTerm, selectedRole]);
 
   // Handle customer deletion
-  const handleDelete = async (customerId: string) => {
-    if (!confirm('Are you sure you want to delete this customer?')) return;
-    
-    try {
-      await api.users.delete(parseInt(customerId));
-      fetchCustomers(); // Refresh the list
-    } catch (err: any) {
-      console.error('Error deleting customer:', err);
-      setError('Failed to delete customer. Please try again.');
-    }
-  };
+  const handleDelete = async (customerId: number | string) => {
+     if (!confirm('Are you sure you want to delete this customer?')) return;
+     
+     try {
+      await api.users.delete(Number(customerId));
+       fetchCustomers(); // Refresh the list
+     } catch (err: any) {
+       console.error('Error deleting customer:', err);
+       setError('Failed to delete customer. Please try again.');
+     }
+   };
 
   // Handle view details
   const handleViewDetails = async (customer: User) => {
     try {
-      const response = await api.users.getById(parseInt(customer.id));
-      setSelectedCustomer(response.data);
+      const response = await api.users.getById(Number(customer.id));
+      setSelectedCustomer(response.data ?? null);
       setShowDetailsModal(true);
     } catch (err: any) {
       console.error('Error fetching customer details:', err);
@@ -338,4 +338,4 @@ function AdminCustomersPage() {
   );
 }
 
-export default withAuth(AdminCustomersPage, '/login');
+export default withAdmin(AdminCustomersPage, '/login');

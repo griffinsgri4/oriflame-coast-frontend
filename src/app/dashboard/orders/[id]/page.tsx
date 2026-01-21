@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { ArrowLeft, Package, Truck, CheckCircle } from 'lucide-react';
 
-export default function OrderDetails({ params }: { params: { id: string } }) {
+export default async function OrderDetails({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   // Mock order data based on ID
   const order = {
-    id: params.id,
+    id: id,
     date: '2023-10-12',
     total: 54.25,
     status: 'Shipped',
@@ -25,17 +26,18 @@ export default function OrderDetails({ params }: { params: { id: string } }) {
     ]
   };
 
-  // Status icon mapping
-  const getStatusIcon = (status: string) => {
+  function getStatusIcon(status: string) {
     switch (status) {
-      case 'Delivered':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'Shipped':
-        return <Truck className="h-5 w-5 text-purple-500" />;
+        return <Truck className="h-4 w-4" />;
+      case 'Processing':
+        return <Package className="h-4 w-4" />;
+      case 'Delivered':
+        return <CheckCircle className="h-4 w-4" />;
       default:
-        return <Package className="h-5 w-5 text-blue-500" />;
+        return null;
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -72,22 +74,16 @@ export default function OrderDetails({ params }: { params: { id: string } }) {
       {/* Order Timeline */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="p-6">
-          <h2 className="text-lg font-medium mb-4">Order Timeline</h2>
-          <div className="relative">
+          <h2 className="text-lg font-medium">Order Timeline</h2>
+          <div className="mt-4 space-y-4">
             {order.timeline.map((event, index) => (
-              <div key={index} className="mb-8 flex items-start last:mb-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                  {getStatusIcon(event.status)}
+              <div key={index} className="flex items-center gap-3">
+                <div className="h-2 w-2 rounded-full bg-purple-600" />
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">{event.status}</span>
+                  <span className="ml-2">{event.date}</span>
+                  <span className="ml-2">{event.time}</span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-base font-medium">{event.status}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {event.date} at {event.time}
-                  </p>
-                </div>
-                {index < order.timeline.length - 1 && (
-                  <div className="absolute left-4 top-8 h-full w-px bg-border -translate-x-1/2" />
-                )}
               </div>
             ))}
           </div>
@@ -97,42 +93,27 @@ export default function OrderDetails({ params }: { params: { id: string } }) {
       {/* Order Items */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="p-6">
-          <h2 className="text-lg font-medium mb-4">Order Items</h2>
-          <div className="divide-y">
+          <h2 className="text-lg font-medium">Items</h2>
+          <div className="mt-4 space-y-4">
             {order.items.map((item, index) => (
-              <div key={index} className="py-4 flex items-center gap-4">
-                <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center text-muted-foreground">
-                  Image
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium">{item.name}</h3>
-                  <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">${item.price.toFixed(2)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </p>
-                </div>
+              <div key={index} className="flex items-center justify-between">
+                <span>{item.name}</span>
+                <span className="text-sm text-muted-foreground">Qty: {item.quantity}</span>
+                <span className="font-medium">${item.price.toFixed(2)}</span>
               </div>
             ))}
-          </div>
-          <div className="mt-6 border-t pt-4">
-            <div className="flex justify-between">
-              <span className="font-medium">Total</span>
-              <span className="font-medium">${order.total.toFixed(2)}</span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Shipping Information */}
+      {/* Customer Info */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="p-6">
-          <h2 className="text-lg font-medium mb-4">Shipping Information</h2>
-          <div>
-            <p className="font-medium">{order.customer.name}</p>
-            <p className="text-muted-foreground">{order.customer.address}</p>
+          <h2 className="text-lg font-medium">Customer</h2>
+          <div className="mt-2 text-sm text-muted-foreground">
+            <p>{order.customer.name}</p>
+            <p>{order.customer.email}</p>
+            <p>{order.customer.address}</p>
           </div>
         </div>
       </div>

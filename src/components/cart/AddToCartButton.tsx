@@ -28,8 +28,9 @@ export default function AddToCartButton({
 
   const isProductInCart = isInCart(product.id);
   const currentQuantity = getItemQuantity(product.id);
-  const isOutOfStock = product.stock && product.stock.quantity === 0;
-  const hasInsufficientStock = product.stock && product.stock.quantity < quantity;
+  const stockQty = typeof product.stock === 'number' ? product.stock : product.stock?.quantity;
+  const isOutOfStock = typeof stockQty === 'number' && stockQty === 0;
+  const hasInsufficientStock = typeof stockQty === 'number' && stockQty < quantity;
 
   const handleAddToCart = async () => {
     if (disabled || isOutOfStock || hasInsufficientStock) return;
@@ -68,7 +69,7 @@ export default function AddToCartButton({
       case 'outline':
         return `${baseClasses} border-2 border-blue-600 text-blue-600 bg-transparent hover:bg-blue-600 hover:text-white focus:ring-blue-500`;
       case 'ghost':
-        return `${baseClasses} text-blue-600 bg-transparent hover:bg-blue-50 focus:ring-blue-500`;
+        return `${baseClasses} bg-transparent text-blue-600 hover:bg-blue-50 focus:ring-blue-500`;
       default:
         return `${baseClasses} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`;
     }

@@ -7,12 +7,23 @@ import { useState, useEffect } from 'react';
 import CartIcon from '@/components/cart/CartIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // Add missing router and search state
+  const router = useRouter();
+  const [desktopSearch, setDesktopSearch] = useState('');
+  const [mobileSearch, setMobileSearch] = useState('');
+  const submitSearch = (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    router.push(`/shop?q=${encodeURIComponent(q)}`);
+  };
 
   // Close mobile menu when screen size changes
   useEffect(() => {
@@ -43,17 +54,16 @@ export default function Header() {
     setIsMobileMenuOpen(false);
   };
 
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>('/oriflame-logo.png');
 
   useEffect(() => {
     const fetchLogo = async () => {
       try {
         const res = await api.settings.getAll();
-        const url = res?.data?.general?.site_logo_url || null;
-        setLogoUrl(url);
+        const url = res?.data?.general?.site_logo_url;
+        if (url) setLogoUrl(url);
       } catch (e) {
-        // silently ignore; fallback will apply
-        setLogoUrl(null);
+        // silently ignore; keep default
       }
     };
     fetchLogo();
@@ -67,19 +77,14 @@ export default function Header() {
             {/* Logo Section */}
             <div className="flex items-center gap-6 lg:gap-10">
               <Link href="/" aria-label="Oriflame Sweden" className="flex items-center space-x-2 flex-shrink-0">
-                {logoUrl ? (
-                  <Image
-                    src={logoUrl}
-                    alt="Oriflame"
-                    width={220}
-                    height={40}
-                    priority
-                    sizes="(max-width: 1024px) 160px, 220px"
-                    className="h-8 sm:h-10 w-auto object-contain"
-                  />
-                ) : (
-                  <div className="h-8 sm:h-10 w-[160px] bg-gray-100 rounded" />
-                )}
+                <Image
+                  src={logoUrl || '/oriflame-logo.png'}
+                  alt="Oriflame"
+                  width={180}
+                  height={40}
+                  priority
+                  className="h-8 sm:h-10 w-auto object-contain"
+                />
               </Link>
               
               {/* Desktop Navigation */}
@@ -107,6 +112,12 @@ export default function Header() {
                 <input
                   type="search"
                   placeholder="Search products..."
+                  aria-label="Search products"
+                  value={desktopSearch}
+                  onChange={(e) => setDesktopSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitSearch(desktopSearch);
+                  }}
                   className="w-64 xl:w-[380px] rounded-full border border-gray-300 pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent bg-gray-50 placeholder:text-gray-400"
                 />
               </div>
@@ -216,6 +227,12 @@ export default function Header() {
                 <input
                   type="search"
                   placeholder="Search products..."
+                  aria-label="Search products"
+                  value={mobileSearch}
+                  onChange={(e) => setMobileSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitSearch(mobileSearch);
+                  }}
                   className="w-full rounded-full border border-gray-200 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent bg-gray-50"
                 />
               </div>

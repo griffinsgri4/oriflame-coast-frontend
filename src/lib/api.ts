@@ -13,14 +13,6 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-
-  // Analytics
-  analytics: {
-    topCategories: async (params?: { period?: '30d' | '90d' | 'all'; limit?: number }): Promise<ApiResponse<any>> => {
-      const response = await apiClient.get('/analytics/top-categories', { params });
-      return response.data;
-    },
-  },
   withCredentials: true, // Important for Laravel Sanctum
 });
 
@@ -195,6 +187,20 @@ export const api = {
       const response = await apiClient.delete(`/products/${id}`);
       return response.data;
     },
+
+    getFeatured: async (params?: { limit?: number }): Promise<ApiResponse<Product[]>> => {
+      const response = await apiClient.get('/products', { params: { featured: true, per_page: params?.limit ?? 8 } });
+      const payload = response.data as ApiResponse<PaginatedResponse<Product> | Product[]>;
+      const productsArray = Array.isArray((payload as any).data)
+        ? ((payload as any).data as any[])
+        : (((payload as any).data as PaginatedResponse<Product>)?.data || []);
+      const normalized = productsArray.map(api.products._normalizeProduct);
+      return {
+        status: (payload as any).status ?? true,
+        message: (payload as any).message ?? 'OK',
+        data: normalized,
+      } as ApiResponse<Product[]>;
+    },
   },
 
   // Categories (optional backend support)
@@ -357,6 +363,11 @@ export const api = {
       period?: number;
     }): Promise<ApiResponse<any>> => {
       const response = await apiClient.get('/analytics/customer-insights', { params });
+      return response.data;
+    },
+
+    topCategories: async (params?: { period?: '30d' | '90d' | 'all'; limit?: number }): Promise<ApiResponse<any>> => {
+      const response = await apiClient.get('/analytics/top-categories', { params });
       return response.data;
     },
   },

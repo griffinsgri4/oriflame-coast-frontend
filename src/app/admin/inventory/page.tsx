@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { withAuth } from '@/contexts/AuthContext';
+import { withAdmin } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -421,7 +421,7 @@ const InventoryPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.sku}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">KSh {product.price.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{(typeof product.stock === 'number' ? product.stock : product.stock?.quantity) ?? 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.stock}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={cn("inline-flex px-2 py-1 text-xs font-semibold rounded-full", getStatusColor(product.status))}>
                             {getStatusLabel(product.status)}
@@ -519,7 +519,7 @@ const InventoryPage = () => {
                           <div className="ml-4">
                             <h4 className="text-sm font-medium text-gray-900">{product.name}</h4>
                             <p className="text-sm text-gray-500">
-                              Current stock: {(typeof product.stock === 'number' ? product.stock : product.stock?.quantity) ?? 0} | Threshold: {product.lowStockThreshold}
+                              Current stock: {product.stock} | Threshold: {product.lowStockThreshold}
                             </p>
                           </div>
                         </div>
@@ -641,4 +641,4 @@ const InventoryPage = () => {
   );
 };
 
-export default withAuth(InventoryPage);
+export default withAdmin(InventoryPage);

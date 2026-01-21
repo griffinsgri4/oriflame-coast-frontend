@@ -19,129 +19,17 @@ export default function Home() {
         setLoading(true);
         setError(null);
         
-        const response = await api.products.getAll({
-          featured: true,
-          per_page: 4,
-          page: 1
-        });
-        
-        if (response.success && response.data) {
-          setFeaturedProducts(response.data.data || []);
+        const response = await api.products.getFeatured();
+        if (response.status && response.data) {
+          setFeaturedProducts(response.data);
         } else {
-          // Fallback to mock data if API fails
-          setFeaturedProducts([
-            { 
-              id: '1', 
-              name: 'Hydrating Face Cream', 
-              price: 24.99, 
-              image: '/api/placeholder/300/300',
-              sku: 'HFC-001',
-              description: 'A luxurious moisturizing cream',
-              category: 'Skincare',
-              attributes: {},
-              stock: 50,
-              featured: true,
-              status: 'active'
-            },
-            { 
-              id: '2', 
-              name: 'Vitamin C Serum', 
-              price: 29.99, 
-              image: '/api/placeholder/300/300',
-              sku: 'VCS-002',
-              description: 'Brightening vitamin C serum',
-              category: 'Skincare',
-              attributes: {},
-              stock: 30,
-              featured: true,
-              status: 'active'
-            },
-            { 
-              id: '3', 
-              name: 'Rejuvenating Night Cream', 
-              price: 34.99, 
-              image: '/api/placeholder/300/300',
-              sku: 'RNC-003',
-              description: 'Anti-aging night cream',
-              category: 'Skincare',
-              attributes: {},
-              stock: 25,
-              featured: true,
-              status: 'active'
-            },
-            { 
-              id: '4', 
-              name: 'Exfoliating Face Scrub', 
-              price: 19.99, 
-              image: '/api/placeholder/300/300',
-              sku: 'EFS-004',
-              description: 'Gentle exfoliating scrub',
-              category: 'Skincare',
-              attributes: {},
-              stock: 40,
-              featured: true,
-              status: 'active'
-            },
-          ]);
+          setError('Failed to load featured products');
+          setFeaturedProducts([]);
         }
       } catch (err: any) {
         console.error('Error fetching featured products:', err);
         setError('Failed to load featured products');
-        // Fallback to mock data on error
-        setFeaturedProducts([
-          { 
-            id: '1', 
-            name: 'Hydrating Face Cream', 
-            price: 24.99, 
-            image: '/api/placeholder/300/300',
-            sku: 'HFC-001',
-            description: 'A luxurious moisturizing cream',
-            category: 'Skincare',
-            attributes: {},
-            stock: 50,
-            featured: true,
-            status: 'active'
-          },
-          { 
-            id: '2', 
-            name: 'Vitamin C Serum', 
-            price: 29.99, 
-            image: '/api/placeholder/300/300',
-            sku: 'VCS-002',
-            description: 'Brightening vitamin C serum',
-            category: 'Skincare',
-            attributes: {},
-            stock: 30,
-            featured: true,
-            status: 'active'
-          },
-          { 
-            id: '3', 
-            name: 'Rejuvenating Night Cream', 
-            price: 34.99, 
-            image: '/api/placeholder/300/300',
-            sku: 'RNC-003',
-            description: 'Anti-aging night cream',
-            category: 'Skincare',
-            attributes: {},
-            stock: 25,
-            featured: true,
-            status: 'active'
-          },
-          { 
-            id: '4', 
-            name: 'Exfoliating Face Scrub', 
-            price: 19.99, 
-            image: '/api/placeholder/300/300',
-            sku: 'EFS-004',
-            description: 'Gentle exfoliating scrub',
-            category: 'Skincare',
-            attributes: {},
-            stock: 40,
-            featured: true,
-            status: 'active'
-          },
-        ]);
+        setFeaturedProducts([]);
       } finally {
         setLoading(false);
       }
@@ -197,9 +85,7 @@ export default function Home() {
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Featured Products</h2>
             <p className="text-sm sm:text-base text-gray-600">Discover our most popular beauty essentials</p>
             {error && (
-              <p className="text-sm text-amber-600 mt-2">
-                {error} - Showing sample products
-              </p>
+              <p className="text-sm text-amber-600 mt-2">{error}</p>
             )}
           </div>
           <Link 
@@ -237,7 +123,7 @@ export default function Home() {
               >
                 <Link href={`/shop/${product.id}`} className="block">
                   <div className="aspect-square bg-gradient-to-br from-[#4CAF50]/10 to-[#7E57C2]/10 relative">
-                    {product.image && product.image !== '/api/placeholder/300/300' ? (
+                    {product.image ? (
                       <img 
                         src={product.image} 
                         alt={product.name}

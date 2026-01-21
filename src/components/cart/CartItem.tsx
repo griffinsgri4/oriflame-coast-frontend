@@ -31,7 +31,6 @@ export default function CartItem({
       updateQuantity(item.product.id, newQuantity);
     } catch (error) {
       console.error('Error updating quantity:', error);
-      // You could add a toast notification here
     } finally {
       setIsUpdating(false);
     }
@@ -52,8 +51,11 @@ export default function CartItem({
   };
 
   const itemTotal = item.price * item.quantity;
-  const isOutOfStock = item.product.stock && item.product.stock.quantity === 0;
-  const hasInsufficientStock = item.product.stock && item.product.stock.quantity < item.quantity;
+  const stockQty = typeof item.product.stock === 'number' ? item.product.stock : item.product.stock?.quantity;
+  const isOutOfStock = typeof stockQty === 'number' && stockQty === 0;
+  const hasInsufficientStock = typeof stockQty === 'number' && stockQty < item.quantity;
+
+  const disableIncrease = isUpdating || (typeof stockQty === 'number' ? item.quantity >= stockQty : false);
 
   return (
     <div className={cn(
@@ -99,9 +101,9 @@ export default function CartItem({
                 Out of Stock
               </span>
             )}
-            {hasInsufficientStock && !isOutOfStock && (
+            {hasInsufficientStock && !isOutOfStock && typeof stockQty === 'number' && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-2">
-                Only {item.product.stock?.quantity} left
+                Only {stockQty} left
               </span>
             )}
           </div>
@@ -140,7 +142,7 @@ export default function CartItem({
                 
                 <button
                   onClick={incrementQuantity}
-                  disabled={isUpdating || hasInsufficientStock}
+                  disabled={disableIncrease}
                   className="p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   aria-label="Increase quantity"
                 >

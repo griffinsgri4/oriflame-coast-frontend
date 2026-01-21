@@ -24,76 +24,70 @@ export default function ProductDetailPage() {
   const { data: productResponse, loading, error } = useApi<{ data: Product }>(`/products/${productId}`);
   const product = productResponse?.data;
 
-  // Mock product data for fallback
-  const mockProduct: Product = {
-    id: productId,
-    name: 'Hydrating Face Cream',
-    description: 'A luxurious moisturizing cream that deeply hydrates and nourishes your skin. Formulated with natural ingredients including hyaluronic acid, vitamin E, and botanical extracts. Perfect for all skin types, this cream provides long-lasting hydration while improving skin texture and elasticity.',
-    price: 29.99,
-    image: '/api/placeholder/400/400',
-    category: 'Skincare',
-    stock: 50,
-    featured: true,
-    status: 'active',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  };
+  // Use only real product data
+  const displayProduct = product as Product;
 
-  const displayProduct = product || mockProduct;
-
-  // Mock additional product images
+  // Use real product images only
   const productImages = (
-    (displayProduct.gallery && displayProduct.gallery.length > 0)
-      ? displayProduct.gallery
-      : [
-          displayProduct.image || '/api/placeholder/400/400',
-          '/api/placeholder/400/400',
-          '/api/placeholder/400/400',
-          '/api/placeholder/400/400'
-        ]
-  ).filter(Boolean) as string[];
+    (product?.gallery && product.gallery.length > 0)
+      ? product.gallery
+      : [product?.image].filter(Boolean)
+  ) as string[];
 
-  // Mock product specifications
-  const specifications = [
-    { label: 'Brand', value: 'Oriflame' },
-    { label: 'Category', value: displayProduct.category },
-    { label: 'Size', value: '50ml' },
-    { label: 'Skin Type', value: 'All Skin Types' },
-    { label: 'Key Ingredients', value: 'Hyaluronic Acid, Vitamin E' },
-    { label: 'Origin', value: 'Sweden' }
-  ];
 
-  // Mock reviews
-  const reviews = [
-    {
-      id: 1,
-      name: 'Sarah M.',
-      rating: 5,
-      comment: 'Amazing product! My skin feels so much softer and hydrated.',
-      date: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Jennifer K.',
-      rating: 4,
-      comment: 'Great quality cream, absorbs well and doesn\'t leave greasy residue.',
-      date: '2024-01-10'
-    },
-    {
-      id: 3,
-      name: 'Maria L.',
-      rating: 5,
-      comment: 'Love this cream! Been using it for months and my skin looks younger.',
-      date: '2024-01-05'
-    }
-  ];
 
-  const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  // Reviews will be loaded from backend if available
+  const reviews: { id: number; name: string; rating: number; comment: string; date: string }[] = [];
+  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
   const stockQty = ((typeof displayProduct.stock === 'number' ? displayProduct.stock : displayProduct.stock?.quantity) ?? 0);
+
+  // Product structured data (JSON-LD)
+  const productUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const baseStructured: any = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: displayProduct.name,
+    image: productImages,
+    description: displayProduct.description,
+    sku: (displayProduct as any).sku ?? String(displayProduct.id),
+    brand: { '@type': 'Brand', name: (displayProduct as any).brand ?? 'Oriflame' },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'KES',
+      price: Number(displayProduct.sale_price ?? displayProduct.price).toFixed(2),
+      availability: stockQty > 0 ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
+      url: productUrl,
+    },
+  };
+  const structuredData = reviews.length
+    ? {
+        ...baseStructured,
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: averageRating.toFixed(1),
+          ratingCount: reviews.length,
+        },
+      }
+    : baseStructured;
+
+  // Breadcrumb structured data
+  const breadcrumbStructured = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${origin}/shop` },
+      ...(displayProduct?.category
+        ? [{ '@type': 'ListItem', position: 3, name: String(displayProduct.category), item: `${origin}/shop?category=${encodeURIComponent(String(displayProduct.category))}` }]
+        : []),
+      { '@type': 'ListItem', position: displayProduct?.category ? 4 : 3, name: displayProduct.name, item: productUrl },
+    ],
+  };
 
   const handleQuantityChange = (change: number) => {
     const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= (displayProduct.stock || 0)) {
+    if (newQuantity >= 1 && newQuantity <= stockQty) {
       setQuantity(newQuantity);
     }
   };
@@ -169,6 +163,9 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-6 lg:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* JSON-LD */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructured) }} />
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6 lg:mb-8 overflow-x-auto">
           <Link href="/" className="hover:text-[#4CAF50] transition-colors">Home</Link>
@@ -306,16 +303,16 @@ export default function ProductDetailPage() {
             <div className="flex items-center space-x-2">
               <div className={cn(
                 "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full",
-                (displayProduct.stock || 0) > 10 ? "bg-green-500" :
-                (displayProduct.stock || 0) > 0 ? "bg-yellow-500" : "bg-red-500"
+                stockQty > 10 ? "bg-green-500" :
+                stockQty > 0 ? "bg-yellow-500" : "bg-red-500"
               )}></div>
               <span className={cn(
                 "text-xs sm:text-sm font-medium",
-                (displayProduct.stock || 0) > 10 ? "text-green-600" :
-                (displayProduct.stock || 0) > 0 ? "text-yellow-600" : "text-red-600"
+                stockQty > 10 ? "text-green-600" :
+                stockQty > 0 ? "text-yellow-600" : "text-red-600"
               )}>
-                {(displayProduct.stock || 0) > 10 ? "In Stock" :
-                 (displayProduct.stock || 0) > 0 ? `Only ${displayProduct.stock} left` : "Out of Stock"}
+                {stockQty > 10 ? "In Stock" :
+                 stockQty > 0 ? `Only ${stockQty} left` : "Out of Stock"}
               </span>
             </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useApi } from '@/hooks/useApi';
-import { Product } from '@/lib/types';
+import { Product, ApiResponse, PaginatedResponse } from '@/lib/types';
 import AddToCartButton from '@/components/cart/AddToCartButton';
 
 // Category configuration with subcategories
@@ -61,73 +61,25 @@ export default function CategoryPage() {
     }
   }, [category, router]);
 
-  // Mock products for the category
-  const mockProducts: Product[] = [
-    {
-      id: '1',
-      name: 'Hydrating Face Cream',
-      sku: 'HFC-001',
-      description: 'A luxurious moisturizing cream that deeply hydrates and nourishes your skin.',
-      price: 29.99,
-      image: '/api/placeholder/300/300',
-      category: 'Skincare',
-      attributes: { skin_type: 'all', volume: '50ml', spf: false, subcategory: 'Face Care' },
-      stock: 50,
-      featured: true,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '2',
-      name: 'Vitamin C Serum',
-      sku: 'VCS-002',
-      description: 'Brightening serum with vitamin C to even skin tone and reduce dark spots.',
-      price: 39.99,
-      image: '/api/placeholder/300/300',
-      category: 'Skincare',
-      attributes: { skin_type: 'all', volume: '30ml', vitamin_c: '20%', subcategory: 'Face Care' },
-      stock: 30,
-      featured: false,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '3',
-      name: 'Anti-Aging Eye Cream',
-      sku: 'AEC-003',
-      description: 'Reduce fine lines and dark circles with this powerful eye cream.',
-      price: 45.99,
-      image: '/api/placeholder/300/300',
-      category: 'Skincare',
-      attributes: { skin_type: 'mature', volume: '15ml', anti_aging: true, subcategory: 'Eye Care' },
-      stock: 25,
-      featured: true,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '4',
-      name: 'Nourishing Body Lotion',
-      sku: 'NBL-004',
-      description: 'Rich body lotion with natural ingredients for soft, smooth skin.',
-      price: 24.99,
-      image: '/api/placeholder/300/300',
-      category: 'Body Care',
-      attributes: { skin_type: 'dry', volume: '200ml', natural: true, subcategory: 'Body Lotion' },
-      stock: 60,
-      featured: false,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    }
-  ];
+  // Fetch products for this category from the API
+  const {
+    data: productsResponse,
+    loading,
+    error,
+    refetch
+  } = useApi<ApiResponse<PaginatedResponse<Product>>>('/products', {
+    page: currentPage,
+    per_page: 9,
+    search: searchQuery,
+    category: category?.name,
+    sort: sortBy
+  });
 
-  // Filter products based on category and subcategory
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesCategory = product.category.toLowerCase().replace(' ', '-') === categorySlug;
+  const products = productsResponse?.data?.data || [];
+  const pagination = productsResponse?.data?.meta;
+
+  // Filter products based on subcategory and price range (client-side)
+  const filteredProducts = products.filter(product => {
     const matchesSubcategory = selectedSubcategory === 'All' || 
       product.attributes?.subcategory === selectedSubcategory;
     const matchesSearch = !searchQuery || 
@@ -135,7 +87,7 @@ export default function CategoryPage() {
       product.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
     
-    return matchesCategory && matchesSubcategory && matchesSearch && matchesPrice;
+    return matchesSubcategory && matchesSearch && matchesPrice;
   });
 
   // Sort products
@@ -341,11 +293,15 @@ export default function CategoryPage() {
                   <div key={product.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-[#4CAF50]/20 transition-all duration-300 transform hover:-translate-y-1">
                     <Link href={`/shop/${product.id}`} className="block">
                       <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100" />
+                        )}
                         {product.featured && (
                           <span className="absolute top-3 left-3 bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] text-white px-3 py-1 text-xs font-medium rounded-full shadow-lg">
                             Featured
@@ -384,7 +340,6 @@ export default function CategoryPage() {
                         </div>
                         <AddToCartButton 
                           product={product}
-                          variant="compact"
                           className="bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] hover:from-[#45a049] hover:to-[#6d4bb8] text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
                         />
                       </div>
@@ -398,14 +353,4 @@ export default function CategoryPage() {
       </div>
     </div>
   );
-}
-
-interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    current_page: number;
-    per_page: number;
-    total: number;
-    total_pages: number;
-  };
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { Category } from "@/lib/types";
+import { withAdmin, useAuth } from "@/contexts/AuthContext";
 
 type FormState = {
   name: string;
@@ -12,7 +13,7 @@ type FormState = {
   thumbnail_url?: string;
 };
 
-export default function AdminCategoriesPage() {
+function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,29 +47,12 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const { user } = useAuth();
   useEffect(() => {
-    // Client-side admin guard
-    (async () => {
-      try {
-        const res = await api.auth.getUser();
-        const user = (res as any).data as any;
-        const admin = user?.role === 'admin';
-        setIsAdmin(admin);
-        if (!admin && typeof window !== 'undefined') {
-          window.location.href = '/login';
-          return;
-        }
-      } catch (e) {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-          return;
-        }
-      } finally {
-        setAuthLoading(false);
-      }
-      fetchData();
-    })();
-  }, []);
+    setIsAdmin(user?.role === 'admin');
+    setAuthLoading(false);
+    fetchData();
+  }, [user]);
 
   useEffect(() => {
     const fetchTop = async () => {
@@ -369,14 +353,14 @@ export default function AdminCategoriesPage() {
                     <input
                       className="border rounded px-2 py-1 w-full"
                       defaultValue={c.name}
-                      onBlur={(e) => onUpdate(c.id!, { name: e.target.value })}
+                      onBlur={(e) => onUpdate(Number(c.id), { name: e.target.value })}
                     />
                   </td>
                   <td className="p-3">
                     <input
                       className="border rounded px-2 py-1 w-full"
                       defaultValue={c.slug}
-                      onBlur={(e) => onUpdate(c.id!, { slug: e.target.value })}
+                      onBlur={(e) => onUpdate(Number(c.id), { slug: e.target.value })}
                     />
                   </td>
                   <td className="p-3">
@@ -384,7 +368,7 @@ export default function AdminCategoriesPage() {
                       className="border rounded px-2 py-1 w-24"
                       type="number"
                       defaultValue={c.order ?? 0}
-                      onBlur={(e) => onUpdate(c.id!, { order: Number(e.target.value) })}
+                      onBlur={(e) => onUpdate(Number(c.id), { order: Number(e.target.value) })}
                     />
                   </td>
                   <td className="p-3">{c.product_count ?? 0}</td>
@@ -395,7 +379,7 @@ export default function AdminCategoriesPage() {
                         className="border rounded px-2 py-1"
                         defaultValue={c.thumbnail_url || ''}
                         placeholder="Thumbnail URL"
-                        onBlur={(e) => onUpdate(c.id!, { thumbnail_url: e.target.value })}
+                        onBlur={(e) => onUpdate(Number(c.id), { thumbnail_url: e.target.value })}
                       />
                       <label className="px-3 py-1 rounded bg-gray-800 text-white cursor-pointer">
                         Upload
@@ -423,7 +407,7 @@ export default function AdminCategoriesPage() {
                       <button
                         className="px-3 py-1 rounded bg-red-600 text-white disabled:opacity-50"
                         disabled={savingId === c.id}
-                        onClick={() => onDelete(c.id!)}
+                        onClick={() => onDelete(Number(c.id))}
                       >
                         {savingId === c.id ? "..." : "Delete"}
                       </button>
@@ -438,3 +422,5 @@ export default function AdminCategoriesPage() {
     </div>
   );
 }
+
+export default withAdmin(AdminCategoriesPage, '/login');

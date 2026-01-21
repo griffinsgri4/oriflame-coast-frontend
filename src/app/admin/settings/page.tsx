@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Settings, Save, User, Bell, Shield, Globe, Mail, Database, Key, Eye, EyeOff } from 'lucide-react';
-import { withAuth } from '@/contexts/AuthContext';
+import { withAdmin } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
 interface SettingsData {
@@ -95,7 +95,7 @@ function AdminSettingsPage() {
     setError('');
     try {
       const response = await api.settings.getAll();
-      if (response.success && response.data) {
+      if (response.status && response.data) {
         setSettings(prev => ({
           ...prev,
           ...response.data,
@@ -189,7 +189,7 @@ function AdminSettingsPage() {
       setSuccess(null);
       
       const response = await api.settings.update(settings);
-      if (response.success) {
+      if (response.status) {
         setSuccess('Settings saved successfully!');
         setTimeout(() => setSuccess(null), 3000);
       } else {
@@ -404,20 +404,20 @@ function AdminSettingsPage() {
                         setUploading(true);
                         setError(null);
                         const res = await api.settings.uploadImage('general.site_logo_url', logoFile);
-                        if (res.success && (res as any).data?.url) {
-                          const url = (res as any).data.url as string;
-                          setSettings(prev => ({
-                            ...prev,
-                            general: {
-                              ...prev.general,
-                              site_logo_url: url,
-                            }
-                          }));
-                          setSuccess('Logo uploaded successfully');
-                          setTimeout(() => setSuccess(null), 3000);
-                          setLogoFile(null);
-                        } else {
-                          setError((res as any).message || 'Failed to upload logo');
+                        if (res.status && (res as any).data?.url) {
+                           const url = (res as any).data.url as string;
+                           setSettings(prev => ({
+                             ...prev,
+                             general: {
+                               ...prev.general,
+                               site_logo_url: url,
+                             }
+                           }));
+                           setSuccess('Logo uploaded successfully');
+                           setTimeout(() => setSuccess(null), 3000);
+                           setLogoFile(null);
+                         } else {
+                           setError((res as any).message || 'Failed to upload logo');
                         }
                       } catch (err: any) {
                         console.error('Logo upload error:', err);
@@ -667,4 +667,4 @@ function AdminSettingsPage() {
   );
 }
 
-export default withAuth(AdminSettingsPage, '/login');
+export default withAdmin(AdminSettingsPage, '/login');

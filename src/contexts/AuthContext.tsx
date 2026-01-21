@@ -39,6 +39,17 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Add safe JSON parser to avoid crashing on invalid localStorage values
+const safeParseUser = (raw: string | null): User | null => {
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? (parsed as User) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -50,11 +61,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         const storedToken = localStorage.getItem('auth_token');
-        const storedUser = localStorage.getItem('user');
+        const storedUserRaw = localStorage.getItem('user');
+        const parsedUser = safeParseUser(storedUserRaw);
 
-        if (storedToken && storedUser) {
+        if (storedToken) {
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          setUser(parsedUser);
           
           // Verify token is still valid
           try {
@@ -87,13 +99,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const payload = (response as any)?.data ?? (response as any);
       const { token: authToken, user: userData } = (payload as any)?.data || {};
       
-      // Store in localStorage
-      localStorage.setItem('auth_token', authToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Update state
-      setToken(authToken);
-      setUser(userData);
+      // Store in localStorage safely
+      if (typeof authToken === 'string' && authToken.length > 0) {
+        localStorage.setItem('auth_token', authToken);
+        setToken(authToken);
+      } else {
+        localStorage.removeItem('auth_token');
+        setToken(null);
+      }
+
+      if (userData && typeof userData === 'object') {
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+      } else {
+        localStorage.removeItem('user');
+        setUser(null);
+      }
       
       // Redirect based on user role or intended page
       const intendedPath = localStorage.getItem('intended_path');
@@ -125,13 +146,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const payload = (response as any)?.data ?? (response as any);
       const { token: authToken, user: newUser } = (payload as any)?.data || {};
       
-      // Store in localStorage
-      localStorage.setItem('auth_token', authToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      
-      // Update state
-      setToken(authToken);
-      setUser(newUser);
+      // Store in localStorage safely
+      if (typeof authToken === 'string' && authToken.length > 0) {
+        localStorage.setItem('auth_token', authToken);
+        setToken(authToken);
+      } else {
+        localStorage.removeItem('auth_token');
+        setToken(null);
+      }
+
+      if (newUser && typeof newUser === 'object') {
+        localStorage.setItem('user', JSON.stringify(newUser));
+        setUser(newUser);
+      } else {
+        localStorage.removeItem('user');
+        setUser(null);
+      }
       
       // Redirect to dashboard
       router.push('/dashboard');
@@ -169,13 +199,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateUser = async (userData: Partial<User>): Promise<void> => {
     try {
       const response = await api.auth.updateProfile(userData);
-      const updatedUser = response.data;
+      const updatedUser = (response as any)?.data ?? (response as any);
       
-      // Update localStorage
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      // Update localStorage safely
+      if (updatedUser && typeof updatedUser === 'object') {
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } else {
+        localStorage.removeItem('user');
+      }
       
       // Update state
-      setUser(updatedUser);
+      setUser(updatedUser ?? null);
     } catch (error) {
       console.error('Profile update failed:', error);
       throw error;
@@ -237,6 +271,47 @@ export const withAuth = <P extends object>(
   AuthenticatedComponent.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name})`;
   
   return AuthenticatedComponent;
+};
+
+// Add admin-only HOC to guard routes by role
+export const withAdmin = <P extends object>(
+  WrappedComponent: React.ComponentType<P>,
+  redirectTo: string = '/login'
+) => {
+  const AdminComponent: React.FC<P> = (props) => {
+    const { isAuthenticated, loading, user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      if (!loading) {
+        if (!isAuthenticated) {
+          localStorage.setItem('intended_path', window.location.pathname);
+          router.push(redirectTo);
+        } else if (user?.role !== 'admin') {
+          // Non-admin users are redirected to their dashboard
+          router.push('/dashboard');
+        }
+      }
+    }, [isAuthenticated, loading, router, redirectTo, user]);
+
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (!isAuthenticated || user?.role !== 'admin') {
+      return null;
+    }
+
+    return <WrappedComponent {...props} />;
+  };
+
+  AdminComponent.displayName = `withAdmin(${WrappedComponent.displayName || WrappedComponent.name})`;
+
+  return AdminComponent;
 };
 
 // Hook for guest-only routes (redirect authenticated users)

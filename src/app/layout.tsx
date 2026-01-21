@@ -21,9 +21,22 @@ const poppins = Poppins({
   fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
 });
 
+export const viewport = {
+  themeColor: "#4CAF50",
+};
+
 export const metadata: Metadata = {
   title: "Oriflame Coast Region",
   description: "Premium beauty products from Oriflame Coast Region",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Oriflame Coast",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({

@@ -27,7 +27,7 @@ const RegisterPage = () => {
     address: '',
     agreeToTerms: false,
   });
-  const [errors, setErrors] = useState<Partial<RegisterForm>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof RegisterForm, string>>>({});
 
   // Show loading while checking authentication status
   if (guestLoading) {
@@ -39,7 +39,7 @@ const RegisterPage = () => {
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<RegisterForm> = {};
+    const newErrors: Partial<Record<keyof RegisterForm, string>> = {};
 
     if (!formData.name) {
       newErrors.name = 'Name is required';

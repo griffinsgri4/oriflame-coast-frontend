@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash, AlertTriangle, Package } from 'lucide-react';
-import { withAuth } from '@/contexts/AuthContext';
+import { withAdmin } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { Product } from '@/lib/types';
 import { PageLoading } from '@/components/ui/Loading';
@@ -70,21 +70,27 @@ function AdminProductsPage() {
     e.preventDefault();
     
     try {
-      const productData = {
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        quantity: parseInt(formData.quantity),
-        image: formData.image || '/api/placeholder/300/300'
-      };
-
+      // For updates vs creates, map quantity to stock appropriately
       if (editingProduct) {
-        // Update existing product
-        await api.products.update(parseInt(editingProduct.id), productData);
+        const updateData = {
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          category: formData.category,
+          stock: Number(formData.quantity),
+          image: formData.image || '/api/placeholder/300/300',
+        };
+        await api.products.update(Number(editingProduct.id), updateData);
       } else {
-        // Create new product
-        await api.products.create(productData);
+        const createData = {
+          name: formData.name,
+          description: formData.description,
+          price: Number(formData.price),
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          image: formData.image || '/api/placeholder/300/300',
+        };
+        await api.products.create(createData);
       }
 
       // Reset form and close modal
@@ -108,11 +114,11 @@ function AdminProductsPage() {
   };
 
   // Handle product deletion
-  const handleDelete = async (productId: string) => {
+  const handleDelete = async (productId: number | string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     
     try {
-      await api.products.delete(parseInt(productId));
+      await api.products.delete(Number(productId));
       fetchProducts(); // Refresh the list
     } catch (err: any) {
       console.error('Error deleting product:', err);
@@ -135,10 +141,10 @@ function AdminProductsPage() {
   };
 
   // Get low stock count
-  const lowStockCount = products.filter(p => (p.stock || 0) < 20).length;
-
+  const lowStockCount = products.filter(p => (((typeof p.stock === 'number' ? p.stock : p.stock?.quantity) ?? 0) < 20)).length;
+  
   if (loading && products.length === 0) {
-    return <PageLoading message="Loading products..." />;
+    return <PageLoading text="Loading products..." />;
   }
 
   return (
@@ -457,4 +463,4 @@ function AdminProductsPage() {
   );
 }
 
-export default withAuth(AdminProductsPage, '/login');
+export default withAdmin(AdminProductsPage, '/login');

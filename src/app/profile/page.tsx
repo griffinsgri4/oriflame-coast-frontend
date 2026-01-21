@@ -25,15 +25,22 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'orders'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
+  const getInitials = (name?: string) => {
+    if (!name) return '';
+    const parts = name.split(' ').filter(Boolean);
+    const first = parts[0]?.charAt(0) ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return `${first}${last}`;
+  };
   const [profileData, setProfileData] = useState<ProfileForm>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: (user?.name?.split(' ')?.[0]) || '',
+    lastName: (user?.name?.split(' ')?.slice(1).join(' ') || ''),
     email: user?.email || '',
     phone: user?.phone || '',
     address: user?.address || '',
-    city: user?.city || '',
-    county: user?.county || '',
+    city: '',
+    county: '',
   });
 
   const [passwordData, setPasswordData] = useState<PasswordForm>({
@@ -115,7 +122,13 @@ const ProfilePage = () => {
     setSuccessMessage('');
 
     try {
-      await updateUser(profileData);
+      const updatePayload = {
+        name: `${profileData.firstName} ${profileData.lastName}`.trim(),
+        email: profileData.email,
+        phone: profileData.phone,
+        address: profileData.address,
+      };
+      await updateUser(updatePayload);
       setSuccessMessage('Profile updated successfully!');
       setIsEditing(false);
     } catch (error: any) {
@@ -184,13 +197,13 @@ const ProfilePage = () => {
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
+                  <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                   <p className="text-sm text-gray-600">{user?.email}</p>
                 </div>
                 <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                   <span className="text-white font-medium">
-                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                  </span>
+                     {getInitials(user?.name)}
+                   </span>
                 </div>
               </div>
             </div>

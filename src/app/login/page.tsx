@@ -25,7 +25,7 @@ const LoginPage = () => {
 
   // Show loading while checking authentication status
   if (guestLoading) {
-    return <PageLoading message="Checking authentication..." />;
+    return <PageLoading text="Checking authentication..." />;
   }
 
   const validateForm = (): boolean => {

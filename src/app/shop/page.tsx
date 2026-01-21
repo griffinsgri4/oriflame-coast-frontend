@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useApi } from '@/hooks/useApi';
-import { Product } from '@/lib/types';
+import { Product, ApiResponse, PaginatedResponse } from '@/lib/types';
 import AddToCartButton from '@/components/cart/AddToCartButton';
 
-export default function ShopPage() {
+function ShopContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
@@ -16,6 +16,43 @@ export default function ShopPage() {
   const [showAdvancedSearch, setShowAdvancedSearch] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>('name');
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Initialize filters from URL
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    const sku = searchParams.get('sku') || '';
+    const categoryParam = searchParams.get('category');
+    const sortParam = searchParams.get('sort');
+    const pageParam = searchParams.get('page');
+
+    if (q) setSearchQuery(q);
+    if (sku) setSkuSearch(sku);
+    if (sortParam) setSortBy(sortParam);
+    if (pageParam && !isNaN(Number(pageParam))) setCurrentPage(Number(pageParam));
+    if (categoryParam) {
+      const toTitle = (s: string) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      setSelectedCategory(toTitle(categoryParam));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync URL when filters change (debounced values)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearchQuery) params.set('q', debouncedSearchQuery);
+    if (debouncedSkuSearch) params.set('sku', debouncedSkuSearch);
+    if (selectedCategory && selectedCategory !== 'All') {
+      const toSlug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
+      params.set('category', toSlug(selectedCategory));
+    }
+    if (sortBy && sortBy !== 'name') params.set('sort', sortBy);
+    if (currentPage > 1) params.set('page', String(currentPage));
+    const qs = params.toString();
+    router.push(qs ? `/shop?${qs}` : '/shop', { scroll: false });
+  }, [debouncedSearchQuery, debouncedSkuSearch, selectedCategory, sortBy, currentPage, router]);
 
   // Debounce search query
   useEffect(() => {
@@ -35,99 +72,7 @@ export default function ShopPage() {
     return () => clearTimeout(timer);
   }, [skuSearch]);
 
-  // Mock data fallback when API is not available
-  const mockProducts: Product[] = [
-    {
-      id: '1',
-      name: 'Hydrating Face Cream',
-      sku: 'HFC-001',
-      description: 'A luxurious moisturizing cream that deeply hydrates and nourishes your skin.',
-      price: 29.99,
-      image: '/api/placeholder/300/300',
-      category: 'Skincare',
-      attributes: { skin_type: 'all', volume: '50ml', spf: false },
-      stock: 50,
-      featured: true,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '2',
-      name: 'Vitamin C Serum',
-      sku: 'VCS-002',
-      description: 'Brightening serum with vitamin C to even skin tone and reduce dark spots.',
-      price: 39.99,
-      image: '/api/placeholder/300/300',
-      category: 'Skincare',
-      attributes: { skin_type: 'all', volume: '30ml', vitamin_c: '20%' },
-      stock: 30,
-      featured: false,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '3',
-      name: 'Matte Lipstick',
-      sku: 'ML-003',
-      description: 'Long-lasting matte lipstick in a beautiful red shade.',
-      price: 19.99,
-      image: '/api/placeholder/300/300',
-      category: 'Makeup',
-      attributes: { color: 'red', finish: 'matte', long_lasting: true },
-      stock: 75,
-      featured: true,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '4',
-      name: 'Foundation',
-      sku: 'FND-004',
-      description: 'Full coverage foundation for a flawless complexion.',
-      price: 34.99,
-      image: '/api/placeholder/300/300',
-      category: 'Makeup',
-      attributes: { coverage: 'full', shade: 'medium', spf: '15' },
-      stock: 40,
-      featured: false,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '5',
-      name: 'Floral Perfume',
-      sku: 'FP-005',
-      description: 'A delicate floral fragrance perfect for everyday wear.',
-      price: 49.99,
-      image: '/api/placeholder/300/300',
-      category: 'Fragrance',
-      attributes: { scent_family: 'floral', volume: '50ml', longevity: 'long' },
-      stock: 25,
-      featured: true,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    },
-    {
-      id: '6',
-      name: 'Body Lotion',
-      sku: 'BL-006',
-      description: 'Nourishing body lotion with natural ingredients.',
-      price: 24.99,
-      image: '/api/placeholder/300/300',
-      category: 'Body Care',
-      attributes: { skin_type: 'dry', volume: '200ml', natural: true },
-      stock: 60,
-      featured: false,
-      status: 'active',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z'
-    }
-  ];
+
 
   // API call for products with fallback to mock data
   const { 
@@ -135,7 +80,7 @@ export default function ShopPage() {
     loading, 
     error, 
     refetch 
-  } = useApi<PaginatedResponse<Product>>('/products', {
+  } = useApi<ApiResponse<PaginatedResponse<Product>>>('/products', {
     page: currentPage,
     per_page: 9,
     search: debouncedSearchQuery,
@@ -144,50 +89,8 @@ export default function ShopPage() {
     sort: sortBy
   });
 
-  // Process products with fallback to mock data
-  const products = (() => {
-    if (error && mockProducts) {
-      let filtered = [...mockProducts];
-      
-      // Apply category filter
-      if (selectedCategory !== 'All') {
-        filtered = filtered.filter(product => product.category === selectedCategory);
-      }
-      
-      // Apply search filter
-      if (debouncedSearchQuery) {
-        filtered = filtered.filter(product => 
-          product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-          product.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-        );
-      }
-      
-      // Apply SKU filter
-      if (debouncedSkuSearch) {
-        filtered = filtered.filter(product => 
-          product.sku?.toLowerCase().includes(debouncedSkuSearch.toLowerCase())
-        );
-      }
-      
-      // Apply sorting
-      switch (sortBy) {
-        case 'price_asc':
-          filtered.sort((a, b) => a.price - b.price);
-          break;
-        case 'price_desc':
-          filtered.sort((a, b) => b.price - a.price);
-          break;
-        case 'name':
-        default:
-          filtered.sort((a, b) => a.name.localeCompare(b.name));
-          break;
-      }
-      
-      return filtered;
-    }
-    
-    return productsResponse?.data?.data || [];
-  })();
+  // Use only real API data; show empty/error states when needed
+  const products = productsResponse?.data?.data || [];
 
   const pagination = productsResponse?.data?.meta;
 
@@ -605,7 +508,6 @@ export default function ShopPage() {
                         </div>
                         <AddToCartButton 
                           product={product}
-                          variant="compact"
                           className="bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] hover:from-[#45a049] hover:to-[#6d4bb8] text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                         />
                       </div>
@@ -630,7 +532,7 @@ export default function ShopPage() {
                     </svg>
                   </button>
                   
-                  {[...Array(Math.min(5, pagination.total_pages))].map((_, i) => {
+                  {[...Array(Math.min(5, pagination.last_page))].map((_, i) => {
                     const page = i + 1;
                     return (
                       <button 
@@ -649,7 +551,7 @@ export default function ShopPage() {
                   
                   <button 
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage >= pagination.total_pages}
+                    disabled={currentPage >= pagination.last_page}
                     className="inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg border border-gray-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4CAF50] hover:text-white hover:border-[#4CAF50] transition-all duration-200"
                   >
                     <span className="sr-only">Next</span>
@@ -667,12 +569,10 @@ export default function ShopPage() {
   );
 }
 
-interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    current_page: number;
-    per_page: number;
-    total: number;
-    total_pages: number;
-  };
+export default function ShopPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4CAF50]"></div></div>}>
+      <ShopContent />
+    </Suspense>
+  );
 }

@@ -6,8 +6,8 @@ import { CartItem, Product, Cart } from '@/lib/types';
 // Cart Actions
 type CartAction =
   | { type: 'ADD_ITEM'; payload: { product: Product; quantity?: number } }
-  | { type: 'REMOVE_ITEM'; payload: { productId: number } }
-  | { type: 'UPDATE_QUANTITY'; payload: { productId: number; quantity: number } }
+  | { type: 'REMOVE_ITEM'; payload: { productId: number | string } }
+  | { type: 'UPDATE_QUANTITY'; payload: { productId: number | string; quantity: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: CartItem[] };
 
@@ -15,11 +15,11 @@ type CartAction =
 interface CartContextType {
   cart: Cart;
   addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeItem: (productId: number | string) => void;
+  updateQuantity: (productId: number | string, quantity: number) => void;
   clearCart: () => void;
-  isInCart: (productId: number) => boolean;
-  getItemQuantity: (productId: number) => number;
+  isInCart: (productId: number | string) => boolean;
+  getItemQuantity: (productId: number | string) => number;
 }
 
 // Cart Reducer
@@ -126,21 +126,21 @@ export function CartProvider({ children }: CartProviderProps) {
   // Cart actions
   const addItem = (product: Product, quantity: number = 1) => {
     // Check if product has stock
-    if (product.stock && product.stock.quantity < quantity) {
+    if (product.stock && (typeof product.stock !== 'number') && product.stock.quantity < quantity) {
       throw new Error(`Only ${product.stock.quantity} items available in stock`);
     }
 
     dispatch({ type: 'ADD_ITEM', payload: { product, quantity } });
   };
 
-  const removeItem = (productId: number) => {
+  const removeItem = (productId: number | string) => {
     dispatch({ type: 'REMOVE_ITEM', payload: { productId } });
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = (productId: number | string, quantity: number) => {
     const item = cartItems.find(item => item.product.id === productId);
     
-    if (item && item.product.stock && item.product.stock.quantity < quantity) {
+    if (item && item.product.stock && (typeof item.product.stock !== 'number') && item.product.stock.quantity < quantity) {
       throw new Error(`Only ${item.product.stock.quantity} items available in stock`);
     }
 
@@ -151,11 +151,11 @@ export function CartProvider({ children }: CartProviderProps) {
     dispatch({ type: 'CLEAR_CART' });
   };
 
-  const isInCart = (productId: number): boolean => {
+  const isInCart = (productId: number | string): boolean => {
     return cartItems.some(item => item.product.id === productId);
   };
 
-  const getItemQuantity = (productId: number): number => {
+  const getItemQuantity = (productId: number | string): number => {
     const item = cartItems.find(item => item.product.id === productId);
     return item ? item.quantity : 0;
   };

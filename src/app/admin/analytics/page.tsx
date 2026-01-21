@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, BarChart3, PieChart, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { withAuth } from '@/contexts/AuthContext';
+import { withAdmin } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
 interface AnalyticsData {
@@ -95,7 +95,7 @@ function AdminAnalyticsPage() {
         period: parseInt(selectedPeriod) 
       });
       
-      if (response.success && response.data) {
+      if (response.status && response.data) {
         setAnalytics(response.data);
       } else {
         // Fallback to mock data if API fails
@@ -405,4 +405,4 @@ function AdminAnalyticsPage() {
   );
 }
 
-export default withAuth(AdminAnalyticsPage, '/login');
+export default withAdmin(AdminAnalyticsPage, '/login');
