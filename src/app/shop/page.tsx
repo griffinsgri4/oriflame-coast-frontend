@@ -83,8 +83,8 @@ function ShopContent() {
   } = useApi<ApiResponse<PaginatedResponse<Product>>>('/products', {
     page: currentPage,
     per_page: 9,
-    search: debouncedSearchQuery,
-    sku: debouncedSkuSearch,
+    search: debouncedSearchQuery ? debouncedSearchQuery : undefined,
+    sku: debouncedSkuSearch ? debouncedSkuSearch : undefined,
     category: selectedCategory !== 'All' ? selectedCategory : undefined,
     sort: sortBy
   });
