@@ -14,6 +14,15 @@ const SANCTUM_BASE_URL =
     ? 'https://oriflame-backend.onrender.com'
     : 'http://localhost:8000');
 
+const toAbsoluteUrl = (value: any): any => {
+  if (typeof value !== 'string') return value;
+  const v = value.trim();
+  if (!v) return v;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith('/')) return `${SANCTUM_BASE_URL}${v}`;
+  return v;
+};
+
 // Create axios instance for API calls
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -136,9 +145,10 @@ export const api = {
         price: toNum(p.price) as number,
         sale_price: toNum(p.sale_price),
         original_price: toNum(p.original_price),
+        image: toAbsoluteUrl(p.image),
         // Ensure arrays are arrays
         tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? p.tags.split(',').map((s: string) => s.trim()).filter(Boolean) : p.tags),
-        gallery: Array.isArray(p.gallery) ? p.gallery : (p.gallery ? [p.gallery] : []),
+        gallery: (Array.isArray(p.gallery) ? p.gallery : (p.gallery ? [p.gallery] : [])).map(toAbsoluteUrl),
       } as Product;
     },
     getAll: async (params?: {
@@ -173,14 +183,25 @@ export const api = {
       image?: string;
       category: string;
       featured?: boolean;
+      sku: string;
       quantity: number;
     }): Promise<ApiResponse<Product>> => {
       const response = await apiClient.post('/products', productData);
-      const payload = response.data as ApiResponse<Product>;
-      if (payload?.data) {
-        payload.data = api.products._normalizeProduct(payload.data);
+      const payload = response.data as ApiResponse<any>;
+      const product = payload?.data?.product ?? payload?.data;
+      const stock = payload?.data?.stock ?? undefined;
+      if (product) {
+        const normalized = api.products._normalizeProduct(product);
+        if (stock) {
+          (normalized as any).stock = stock;
+        }
+        return {
+          status: payload.status,
+          message: payload.message,
+          data: normalized,
+        } as ApiResponse<Product>;
       }
-      return payload;
+      return payload as ApiResponse<Product>;
     },
 
     update: async (id: number, productData: Partial<Product>): Promise<ApiResponse<Product>> => {

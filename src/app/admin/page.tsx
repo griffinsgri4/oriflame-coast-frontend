@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash, AlertTriangle, Package } from 'lucide-react';
 import { withAdmin } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { api, handleApiError, isApiError } from '@/lib/api';
 import { Product } from '@/lib/types';
 import { PageLoading } from '@/components/ui/Loading';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
@@ -22,6 +22,7 @@ function AdminProductsPage() {
   // Form state for adding/editing products
   const [formData, setFormData] = useState({
     name: '',
+    sku: '',
     description: '',
     price: '',
     category: '',
@@ -74,16 +75,22 @@ function AdminProductsPage() {
       if (editingProduct) {
         const updateData = {
           name: formData.name,
+          sku: formData.sku,
           description: formData.description,
           price: Number(formData.price),
           category: formData.category,
-          stock: Number(formData.quantity),
           image: formData.image || '/api/placeholder/300/300',
         };
         await api.products.update(Number(editingProduct.id), updateData);
+
+        const stockId = typeof editingProduct.stock === 'object' && editingProduct.stock ? (editingProduct.stock as any).id : null;
+        if (stockId) {
+          await api.stock.update(Number(stockId), Number(formData.quantity));
+        }
       } else {
         const createData = {
           name: formData.name,
+          sku: formData.sku,
           description: formData.description,
           price: Number(formData.price),
           category: formData.category,
@@ -96,6 +103,7 @@ function AdminProductsPage() {
       // Reset form and close modal
       setFormData({
         name: '',
+        sku: '',
         description: '',
         price: '',
         category: '',
@@ -109,7 +117,11 @@ function AdminProductsPage() {
       fetchProducts();
     } catch (err: any) {
       console.error('Error saving product:', err);
-      setError('Failed to save product. Please try again.');
+      if (isApiError(err)) {
+        setError(handleApiError(err));
+      } else {
+        setError('Failed to save product. Please try again.');
+      }
     }
   };
 
@@ -131,10 +143,11 @@ function AdminProductsPage() {
     setEditingProduct(product);
     setFormData({
       name: product.name,
+      sku: product.sku || '',
       description: product.description || '',
       price: product.price.toString(),
       category: product.category,
-      quantity: product.stock?.toString() || '0',
+      quantity: ((typeof product.stock === 'number' ? product.stock : (product.stock as any)?.quantity) ?? 0).toString(),
       image: product.image || ''
     });
     setShowAddModal(true);
@@ -161,6 +174,7 @@ function AdminProductsPage() {
               setEditingProduct(null);
               setFormData({
                 name: '',
+                sku: '',
                 description: '',
                 price: '',
                 category: '',
@@ -363,6 +377,19 @@ function AdminProductsPage() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  SKU
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.sku}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
                 />
               </div>
