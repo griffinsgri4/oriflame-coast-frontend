@@ -178,13 +178,24 @@ export const api = {
 
     create: async (productData: {
       name: string;
-      description: string;
-      price: number;
-      image?: string;
-      category: string;
-      featured?: boolean;
       sku: string;
+      description: string;
+      short_description?: string | null;
+      price: number;
+      original_price?: number | null;
+      sale_price?: number | null;
+      image?: string;
+      gallery?: string[];
+      category: string;
+      brand?: string | null;
+      tags?: string[] | null;
+      how_to_use?: string | null;
+      ingredients?: string | null;
+      weight?: string | null;
+      featured?: boolean;
+      status?: 'active' | 'inactive';
       quantity: number;
+      low_stock_threshold?: number;
     }): Promise<ApiResponse<Product>> => {
       const response = await apiClient.post('/products', productData);
       const payload = response.data as ApiResponse<any>;
@@ -215,6 +226,22 @@ export const api = {
 
     delete: async (id: number): Promise<ApiResponse<null>> => {
       const response = await apiClient.delete(`/products/${id}`);
+      return response.data;
+    },
+
+    uploadImages: async (id: number, files: File[]): Promise<ApiResponse<{ urls: string[]; paths: string[] }>> => {
+      const form = new FormData();
+      files.forEach((f) => form.append('images[]', f));
+      const response = await apiClient.post(`/products/${id}/images`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    },
+
+    deleteImage: async (id: number, url: string): Promise<ApiResponse<null>> => {
+      const response = await apiClient.delete(`/products/${id}/images`, {
+        data: { url },
+      });
       return response.data;
     },
 

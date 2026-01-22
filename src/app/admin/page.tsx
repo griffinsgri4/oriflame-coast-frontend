@@ -7,6 +7,7 @@ import { api, handleApiError, isApiError } from '@/lib/api';
 import { Product } from '@/lib/types';
 import { PageLoading } from '@/components/ui/Loading';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import { standardizeProductImage } from '@/utils/image';
 
 function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,11 +25,32 @@ function AdminProductsPage() {
     name: '',
     sku: '',
     description: '',
+    short_description: '',
+    how_to_use: '',
+    ingredients: '',
+    brand: '',
+    tags: '',
+    weight: '',
+    original_price: '',
+    sale_price: '',
     price: '',
     category: '',
     quantity: '',
-    image: ''
+    image: '',
+    featured: false,
+    status: 'active' as 'active' | 'inactive',
   });
+
+  type GalleryItem = {
+    key: string;
+    url: string;
+    kind: 'existing' | 'new';
+    file?: File;
+  };
+
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [originalGalleryUrls, setOriginalGalleryUrls] = useState<string[]>([]);
 
   // Categories for filter dropdown
   const categories = ['All', 'Skincare', 'Makeup', 'Fragrance', 'Body Care', 'Hair Care'];
@@ -71,17 +93,42 @@ function AdminProductsPage() {
     e.preventDefault();
     
     try {
+      const totalImages = galleryItems.length;
+      if (totalImages < 2) {
+        setError('Please add at least 2 product images.');
+        return;
+      }
+
+      const tagsArray = formData.tags
+        ? formData.tags.split(',').map((s) => s.trim()).filter(Boolean)
+        : null;
+
+      const originalPrice = formData.original_price ? Number(formData.original_price) : null;
+      const salePrice = formData.sale_price ? Number(formData.sale_price) : null;
+
+      const baseData = {
+        name: formData.name,
+        sku: formData.sku,
+        description: formData.description,
+        short_description: formData.short_description || null,
+        how_to_use: formData.how_to_use || null,
+        ingredients: formData.ingredients || null,
+        brand: formData.brand || null,
+        tags: tagsArray,
+        weight: formData.weight || null,
+        original_price: originalPrice,
+        sale_price: salePrice,
+        price: Number(formData.price),
+        category: formData.category,
+        featured: formData.featured,
+        status: formData.status,
+      };
+
+      let productId: number;
+
       // For updates vs creates, map quantity to stock appropriately
       if (editingProduct) {
-        const updateData = {
-          name: formData.name,
-          sku: formData.sku,
-          description: formData.description,
-          price: Number(formData.price),
-          category: formData.category,
-          image: formData.image || '/api/placeholder/300/300',
-        };
-        await api.products.update(Number(editingProduct.id), updateData);
+        productId = Number(editingProduct.id);
 
         const stockId = typeof editingProduct.stock === 'object' && editingProduct.stock ? (editingProduct.stock as any).id : null;
         if (stockId) {
@@ -89,27 +136,74 @@ function AdminProductsPage() {
         }
       } else {
         const createData = {
-          name: formData.name,
-          sku: formData.sku,
-          description: formData.description,
-          price: Number(formData.price),
-          category: formData.category,
+          ...baseData,
           quantity: Number(formData.quantity),
-          image: formData.image || '/api/placeholder/300/300',
+          image: '/api/placeholder/300/300',
         };
-        await api.products.create(createData);
+        const created = await api.products.create(createData);
+        if (!created?.data?.id) {
+          throw new Error('Product create failed');
+        }
+        productId = Number(created.data.id);
       }
+
+      const newFiles = galleryItems.filter((i) => i.kind === 'new' && i.file).map((i) => i.file as File);
+      let uploadedUrls: string[] = [];
+
+      if (newFiles.length > 0) {
+        setGalleryBusy(true);
+        const uploadRes = await api.products.uploadImages(productId, newFiles);
+        uploadedUrls = uploadRes?.data?.urls || [];
+      }
+
+      const uploadedQueue = [...uploadedUrls];
+      const finalGallery: string[] = [];
+      for (const item of galleryItems) {
+        if (item.kind === 'existing') {
+          finalGallery.push(item.url);
+        } else {
+          const next = uploadedQueue.shift();
+          if (next) finalGallery.push(next);
+        }
+      }
+
+      const primaryImage = finalGallery[0] || formData.image || '/api/placeholder/300/300';
+
+      if (editingProduct) {
+        const removed = originalGalleryUrls.filter((u) => !finalGallery.includes(u));
+        await Promise.all(
+          removed.map((url) => api.products.deleteImage(productId, url).catch(() => null))
+        );
+      }
+
+      await api.products.update(productId, {
+        ...baseData,
+        image: primaryImage,
+        gallery: finalGallery,
+      } as any);
 
       // Reset form and close modal
       setFormData({
         name: '',
         sku: '',
         description: '',
+        short_description: '',
+        how_to_use: '',
+        ingredients: '',
+        brand: '',
+        tags: '',
+        weight: '',
+        original_price: '',
+        sale_price: '',
         price: '',
         category: '',
         quantity: '',
-        image: ''
+        image: '',
+        featured: false,
+        status: 'active',
       });
+      setGalleryItems([]);
+      setOriginalGalleryUrls([]);
       setShowAddModal(false);
       setEditingProduct(null);
       
@@ -122,6 +216,9 @@ function AdminProductsPage() {
       } else {
         setError('Failed to save product. Please try again.');
       }
+    }
+    finally {
+      setGalleryBusy(false);
     }
   };
 
@@ -141,14 +238,35 @@ function AdminProductsPage() {
   // Handle edit button click
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+
+    const gallery = (product.gallery && product.gallery.length > 0)
+      ? product.gallery
+      : ([product.image].filter(Boolean) as string[]);
+    setOriginalGalleryUrls(gallery);
+    setGalleryItems(gallery.map((url) => ({
+      key: url,
+      url,
+      kind: 'existing' as const,
+    })));
+
     setFormData({
       name: product.name,
       sku: product.sku || '',
       description: product.description || '',
+      short_description: product.short_description || '',
+      how_to_use: product.how_to_use || '',
+      ingredients: product.ingredients || '',
+      brand: product.brand || '',
+      tags: Array.isArray(product.tags) ? product.tags.join(', ') : (typeof product.tags === 'string' ? product.tags : ''),
+      weight: product.weight ? String(product.weight) : '',
+      original_price: product.original_price ? String(product.original_price) : '',
+      sale_price: product.sale_price ? String(product.sale_price) : '',
       price: product.price.toString(),
       category: product.category,
       quantity: ((typeof product.stock === 'number' ? product.stock : (product.stock as any)?.quantity) ?? 0).toString(),
-      image: product.image || ''
+      image: product.image || '',
+      featured: Boolean(product.featured),
+      status: (product.status === 'inactive' ? 'inactive' : 'active'),
     });
     setShowAddModal(true);
   };
@@ -176,11 +294,23 @@ function AdminProductsPage() {
                 name: '',
                 sku: '',
                 description: '',
+                short_description: '',
+                how_to_use: '',
+                ingredients: '',
+                brand: '',
+                tags: '',
+                weight: '',
+                original_price: '',
+                sale_price: '',
                 price: '',
                 category: '',
                 quantity: '',
-                image: ''
+                image: '',
+                featured: false,
+                status: 'active',
               });
+              setGalleryItems([]);
+              setOriginalGalleryUrls([]);
               setShowAddModal(true);
             }}
             className="bg-white text-[#4CAF50] px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
@@ -405,6 +535,18 @@ function AdminProductsPage() {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent resize-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Short Description
+                </label>
+                <textarea
+                  value={formData.short_description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, short_description: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent resize-none"
+                />
+              </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
@@ -417,6 +559,32 @@ function AdminProductsPage() {
                     required
                     value={formData.price}
                     onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Original Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.original_price}
+                    onChange={(e) => setFormData(prev => ({ ...prev, original_price: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Sale Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.sale_price}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sale_price: e.target.value }))}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
                   />
                 </div>
@@ -450,6 +618,171 @@ function AdminProductsPage() {
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Weight
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.weight}
+                    onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  How to use
+                </label>
+                <textarea
+                  value={formData.how_to_use}
+                  onChange={(e) => setFormData(prev => ({ ...prev, how_to_use: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Ingredients
+                </label>
+                <textarea
+                  value={formData.ingredients}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ingredients: e.target.value }))}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.featured}
+                    onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
+                    className="h-4 w-4"
+                  />
+                  Featured
+                </label>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Product Images (min 2)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={galleryBusy}
+                  onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    setGalleryBusy(true);
+                    try {
+                      const raw = Array.from(files);
+                      const standardized = await Promise.all(raw.map((f) => standardizeProductImage(f, 1200)));
+                      const items: GalleryItem[] = standardized.map((file) => {
+                        const key = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+                          ? (globalThis.crypto as any).randomUUID()
+                          : `${Date.now()}-${Math.random()}`;
+                        return {
+                          key,
+                          url: URL.createObjectURL(file),
+                          kind: 'new',
+                          file,
+                        };
+                      });
+                      setGalleryItems((prev) => [...prev, ...items]);
+                    } finally {
+                      setGalleryBusy(false);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+                {galleryItems.length > 0 && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {galleryItems.map((img, index) => (
+                      <div
+                        key={img.key}
+                        draggable
+                        onDragStart={(ev) => {
+                          ev.dataTransfer.setData('text/plain', String(index));
+                        }}
+                        onDragOver={(ev) => ev.preventDefault()}
+                        onDrop={(ev) => {
+                          ev.preventDefault();
+                          const from = Number(ev.dataTransfer.getData('text/plain'));
+                          const to = index;
+                          if (Number.isNaN(from) || from === to) return;
+                          setGalleryItems((prev) => {
+                            const next = [...prev];
+                            const [moved] = next.splice(from, 1);
+                            next.splice(to, 0, moved);
+                            return next;
+                          });
+                        }}
+                        className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                        title="Drag to reorder"
+                      >
+                        <img src={img.url} alt="" className="h-full w-full object-cover" />
+                        {index === 0 && (
+                          <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            Primary
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setGalleryItems((prev) => prev.filter((p) => p.key !== img.key))}
+                          className="absolute right-1 top-1 rounded bg-black/70 px-2 py-1 text-[10px] font-semibold text-white hover:bg-black"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div>
