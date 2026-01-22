@@ -69,10 +69,10 @@ export default function Footer() {
             <h3 className="text-lg font-medium">Contact</h3>
             <ul className="mt-4 space-y-2">
               <li className="text-sm text-muted-foreground">
-                Email: info@oriflamecoast.com
+                Email: oriflamecoastregion@gmail.com
               </li>
               <li className="text-sm text-muted-foreground">
-                Phone: +1 (234) 567-8900
+                Phone: +254 795 669 199
               </li>
               <li className="flex space-x-4 mt-4">
                 <a href="#" className="text-muted-foreground hover:text-foreground">

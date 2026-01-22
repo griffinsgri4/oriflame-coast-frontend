@@ -55,8 +55,8 @@ export default function ContactPage() {
       icon: <Phone className="h-6 w-6" />,
       title: "Call Us",
       details: [
-        "+1 (555) 123-4567",
-        "+1 (555) 123-4568",
+        "+254 795 669 199",
+        "+254 715 085 359",
         "Mon-Fri: 9AM-6PM"
       ]
     },
@@ -64,9 +64,7 @@ export default function ContactPage() {
       icon: <Mail className="h-6 w-6" />,
       title: "Email Us",
       details: [
-        "info@oriflame-coast.com",
-        "support@oriflame-coast.com",
-        "orders@oriflame-coast.com"
+        "oriflamecoastregion@gmail.com"
       ]
     },
     {
