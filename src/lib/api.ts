@@ -2,8 +2,17 @@ import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { Product, Order, User, ApiResponse, PaginatedResponse, Category } from './types';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-const SANCTUM_BASE_URL = process.env.NEXT_PUBLIC_SANCTUM_URL || 'http://localhost:8000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://oriflame-backend.onrender.com/api'
+    : 'http://localhost:8000/api');
+
+const SANCTUM_BASE_URL =
+  process.env.NEXT_PUBLIC_SANCTUM_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://oriflame-backend.onrender.com'
+    : 'http://localhost:8000');
 
 // Create axios instance for API calls
 const apiClient: AxiosInstance = axios.create({
