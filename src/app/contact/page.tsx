@@ -47,8 +47,8 @@ export default function ContactPage() {
       title: "Visit Our Office",
       details: [
         "Oriflame Coast Region",
-        "123 Beauty Boulevard",
-        "Coastal City, CC 12345"
+        "Nkurumah road, ",
+        "Next to Kenya Power, Mombasa"
       ]
     },
     {
@@ -71,8 +71,8 @@ export default function ContactPage() {
       icon: <Clock className="h-6 w-6" />,
       title: "Business Hours",
       details: [
-        "Monday - Friday: 9:00 AM - 6:00 PM",
-        "Saturday: 10:00 AM - 4:00 PM",
+        "Monday - Friday: 8:00 AM - 6:00 PM",
+        "Saturday: 8:00 AM - 6:00 PM",
         "Sunday: Closed"
       ]
     }
