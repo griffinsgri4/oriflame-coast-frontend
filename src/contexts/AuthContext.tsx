@@ -71,8 +71,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Verify token is still valid
           try {
             const response = await api.auth.me();
-            const meUser = (response as any)?.data ?? (response as any);
-            setUser((meUser as any)?.data ?? null);
+            const meUser = (response as any)?.data ?? null;
+            setUser(meUser);
+            if (meUser) {
+              localStorage.setItem('user', JSON.stringify(meUser));
+            } else {
+              localStorage.removeItem('user');
+            }
           } catch (error) {
             // Token is invalid, clear auth state
             console.error('Token validation failed:', error);
@@ -96,8 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await api.auth.login({ email, password });
-      const payload = (response as any)?.data ?? (response as any);
-      const { token: authToken, user: userData } = (payload as any)?.data || {};
+      const { token: authToken, user: userData } = (response as any)?.data || {};
       
       // Store in localStorage safely
       if (typeof authToken === 'string' && authToken.length > 0) {
@@ -143,8 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await api.auth.register(userData);
-      const payload = (response as any)?.data ?? (response as any);
-      const { token: authToken, user: newUser } = (payload as any)?.data || {};
+      const { token: authToken, user: newUser } = (response as any)?.data || {};
       
       // Store in localStorage safely
       if (typeof authToken === 'string' && authToken.length > 0) {
