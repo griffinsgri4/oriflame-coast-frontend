@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { api } from '@/lib/api';
 import { Product } from '@/lib/types';
 import AddToCartButton from '@/components/cart/AddToCartButton';
@@ -41,8 +42,20 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-8 lg:gap-12 pb-8">
       {/* Hero Section */}
-      <section className="relative min-h-[70vh] sm:min-h-[80vh] bg-gradient-to-br from-[#4CAF50]/10 via-white to-[#7E57C2]/10 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%234CAF50%22 fill-opacity=%220.05%22%3E%3Ccircle cx=%2230%22 cy=%2230%22 r=%224%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+      <section className="relative isolate min-h-[70vh] sm:min-h-[80vh] overflow-hidden">
+        <div className="absolute inset-0 -z-20">
+          <Image
+            src="/images/dashboard/dashboard-lilian.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover object-center"
+          />
+        </div>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/85 via-white/65 to-white/80" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#4CAF50]/15 via-transparent to-[#7E57C2]/15" />
+        <div className="absolute inset-0 -z-10 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%234CAF50%22 fill-opacity=%220.05%22%3E%3Ccircle cx=%2230%22 cy=%2230%22 r=%224%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30" />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center relative z-10 py-12 sm:py-16 lg:py-20">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
