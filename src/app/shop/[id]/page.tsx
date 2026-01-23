@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,75 +21,11 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState<'description' | 'additional' | 'how_to_use' | 'ingredients' | 'reviews'>('description');
 
   // Fetch product data
-  const { data: productResponse, loading, error } = useApi<{ data: Product }>(`/products/${productId}`);
-  const product = productResponse?.data;
-
-  // Use only real product data
-  const displayProduct = product as Product;
-
-  // Use real product images only
-  const productImages = (
-    (product?.gallery && product.gallery.length > 0)
-      ? product.gallery
-      : [product?.image].filter(Boolean)
-  ) as string[];
-
-
-
-  // Reviews will be loaded from backend if available
-  const reviews: { id: number; name: string; rating: number; comment: string; date: string }[] = [];
-  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
-  const stockQty = ((typeof displayProduct.stock === 'number' ? displayProduct.stock : displayProduct.stock?.quantity) ?? 0);
-
-  // Product structured data (JSON-LD)
-  const productUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const baseStructured: any = {
-    '@context': 'https://schema.org/',
-    '@type': 'Product',
-    name: displayProduct.name,
-    image: productImages,
-    description: displayProduct.description,
-    sku: (displayProduct as any).sku ?? String(displayProduct.id),
-    brand: { '@type': 'Brand', name: (displayProduct as any).brand ?? 'Oriflame' },
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'KES',
-      price: Number(displayProduct.sale_price ?? displayProduct.price).toFixed(2),
-      availability: stockQty > 0 ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
-      url: productUrl,
-    },
-  };
-  const structuredData = reviews.length
-    ? {
-        ...baseStructured,
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: averageRating.toFixed(1),
-          ratingCount: reviews.length,
-        },
-      }
-    : baseStructured;
-
-  // Breadcrumb structured data
-  const breadcrumbStructured = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
-      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${origin}/shop` },
-      ...(displayProduct?.category
-        ? [{ '@type': 'ListItem', position: 3, name: String(displayProduct.category), item: `${origin}/shop?category=${encodeURIComponent(String(displayProduct.category))}` }]
-        : []),
-      { '@type': 'ListItem', position: displayProduct?.category ? 4 : 3, name: displayProduct.name, item: productUrl },
-    ],
-  };
+  const { data: productResponse, loading, error } = useApi<any>(`/products/${productId}`);
+  const product = (productResponse?.data ?? productResponse?.data?.product) as Product | undefined;
 
   const handleQuantityChange = (change: number) => {
-    const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= stockQty) {
-      setQuantity(newQuantity);
-    }
+    setQuantity(prev => Math.max(1, prev + change));
   };
 
   const handleShare = async () => {
@@ -160,6 +96,89 @@ export default function ProductDetailPage() {
     );
   }
 
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-8 sm:py-12">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Product Not Found</h1>
+            <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">The product you're looking for doesn't exist or has been removed.</p>
+            <Link
+              href="/shop"
+              className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] text-white font-medium rounded-lg hover:from-[#45a049] hover:to-[#6d4bb8] transition-all duration-200 text-sm sm:text-base"
+            >
+              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              Back to Shop
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayProduct = product;
+  const stockQty = ((typeof displayProduct.stock === 'number' ? displayProduct.stock : displayProduct.stock?.quantity) ?? 0);
+
+  const productImages = useMemo(() => {
+    const images = (Array.isArray(displayProduct.gallery) ? displayProduct.gallery : []).filter(Boolean);
+    if (images.length > 0) return images;
+    return displayProduct.image ? [displayProduct.image] : [];
+  }, [displayProduct.gallery, displayProduct.image]);
+
+  useEffect(() => {
+    if (selectedImageIndex >= productImages.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [productImages.length, selectedImageIndex]);
+
+  // Reviews will be loaded from backend if available
+  const reviews: { id: number; name: string; rating: number; comment: string; date: string }[] = [];
+  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
+
+  // Product structured data (JSON-LD)
+  const productUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const baseStructured: any = {
+    '@context': 'https://schema.org/',
+    '@type': 'Product',
+    name: displayProduct.name,
+    image: productImages,
+    description: displayProduct.description,
+    sku: (displayProduct as any).sku ?? String(displayProduct.id),
+    brand: { '@type': 'Brand', name: (displayProduct as any).brand ?? 'Oriflame' },
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'KES',
+      price: Number(displayProduct.sale_price ?? displayProduct.price).toFixed(2),
+      availability: stockQty > 0 ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
+      url: productUrl,
+    },
+  };
+  const structuredData = reviews.length
+    ? {
+        ...baseStructured,
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: averageRating.toFixed(1),
+          ratingCount: reviews.length,
+        },
+      }
+    : baseStructured;
+
+  // Breadcrumb structured data
+  const breadcrumbStructured = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${origin}/shop` },
+      ...(displayProduct?.category
+        ? [{ '@type': 'ListItem', position: 3, name: String(displayProduct.category), item: `${origin}/shop?category=${encodeURIComponent(String(displayProduct.category))}` }]
+        : []),
+      { '@type': 'ListItem', position: displayProduct?.category ? 4 : 3, name: displayProduct.name, item: productUrl },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-6 lg:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -194,38 +213,46 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="aspect-square bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <Image
-                src={productImages[selectedImageIndex]}
-                alt={displayProduct.name}
-                width={600}
-                height={600}
-                className="w-full h-full object-cover"
-              />
+              {productImages.length > 0 ? (
+                <Image
+                  src={productImages[selectedImageIndex]}
+                  alt={displayProduct.name}
+                  width={600}
+                  height={600}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4CAF50]/10 to-[#7E57C2]/10">
+                  <div className="text-5xl text-gray-400">📦</div>
+                </div>
+              )}
             </div>
 
             {/* Thumbnail Images */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-              {productImages.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={cn(
-                    "aspect-square bg-white rounded-lg border-2 overflow-hidden transition-all duration-200",
-                    selectedImageIndex === index
-                      ? "border-[#4CAF50] ring-2 ring-[#4CAF50]/20"
-                      : "border-gray-200 hover:border-gray-300"
-                  )}
-                >
-                  <Image
-                    src={image}
-                    alt={`${displayProduct.name} ${index + 1}`}
-                    width={150}
-                    height={150}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {productImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                {productImages.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={cn(
+                      "aspect-square bg-white rounded-lg border-2 overflow-hidden transition-all duration-200",
+                      selectedImageIndex === index
+                        ? "border-[#4CAF50] ring-2 ring-[#4CAF50]/20"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${displayProduct.name} ${index + 1}`}
+                      width={150}
+                      height={150}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Information */}

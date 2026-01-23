@@ -16,6 +16,8 @@ const nextConfig = {
       { protocol: 'http', hostname: '127.0.0.1', port: '8000', pathname: '/storage/**' },
       { protocol: 'http', hostname: '192.168.0.129', port: '8000', pathname: '/storage/**' },
       { protocol: 'http', hostname: '192.168.0.104', port: '8000', pathname: '/storage/**' },
+      { protocol: 'https', hostname: 'oriflame-backend.onrender.com', pathname: '/storage/**' },
+      { protocol: 'https', hostname: 'oriflame-backend.onrender.com', pathname: '/api/**' },
     ],
   },
   // Silence the conflict error between Turbopack and webpack config (from next-pwa)
