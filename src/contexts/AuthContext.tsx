@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { User } from '@/lib/types';
+import { getAuthToken, getStoredUserRaw, removeAuthToken, removeStoredUser, setAuthToken, setStoredUserRaw } from '@/lib/authStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -60,8 +61,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const storedToken = localStorage.getItem('auth_token');
-        const storedUserRaw = localStorage.getItem('user');
+        const storedToken = await getAuthToken();
+        const storedUserRaw = await getStoredUserRaw();
         const parsedUser = safeParseUser(storedUserRaw);
 
         if (storedToken) {
@@ -74,15 +75,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const meUser = (response as any)?.data ?? null;
             setUser(meUser);
             if (meUser) {
-              localStorage.setItem('user', JSON.stringify(meUser));
+              await setStoredUserRaw(JSON.stringify(meUser));
             } else {
-              localStorage.removeItem('user');
+              await removeStoredUser();
             }
           } catch (error) {
             // Token is invalid, clear auth state
             console.error('Token validation failed:', error);
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
+            await removeAuthToken();
+            await removeStoredUser();
             setToken(null);
             setUser(null);
           }
@@ -105,18 +106,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Store in localStorage safely
       if (typeof authToken === 'string' && authToken.length > 0) {
-        localStorage.setItem('auth_token', authToken);
+        await setAuthToken(authToken);
         setToken(authToken);
       } else {
-        localStorage.removeItem('auth_token');
+        await removeAuthToken();
         setToken(null);
       }
 
       if (userData && typeof userData === 'object') {
-        localStorage.setItem('user', JSON.stringify(userData));
+        await setStoredUserRaw(JSON.stringify(userData));
         setUser(userData);
       } else {
-        localStorage.removeItem('user');
+        await removeStoredUser();
         setUser(null);
       }
       
@@ -151,18 +152,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Store in localStorage safely
       if (typeof authToken === 'string' && authToken.length > 0) {
-        localStorage.setItem('auth_token', authToken);
+        await setAuthToken(authToken);
         setToken(authToken);
       } else {
-        localStorage.removeItem('auth_token');
+        await removeAuthToken();
         setToken(null);
       }
 
       if (newUser && typeof newUser === 'object') {
-        localStorage.setItem('user', JSON.stringify(newUser));
+        await setStoredUserRaw(JSON.stringify(newUser));
         setUser(newUser);
       } else {
-        localStorage.removeItem('user');
+        await removeStoredUser();
         setUser(null);
       }
       
@@ -186,8 +187,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Logout API call failed:', error);
     } finally {
       // Clear localStorage
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      removeAuthToken();
+      removeStoredUser();
       localStorage.removeItem('cart');
       
       // Clear state
@@ -206,9 +207,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Update localStorage safely
       if (updatedUser && typeof updatedUser === 'object') {
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        await setStoredUserRaw(JSON.stringify(updatedUser));
       } else {
-        localStorage.removeItem('user');
+        await removeStoredUser();
       }
       
       // Update state

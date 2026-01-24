@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Oriflame Coast</string>
+    <string name="title_activity_main">Oriflame Coast</string>
+    <string name="package_name">com.oriflame.coast</string>
+    <string name="custom_url_scheme">com.oriflame.coast</string>
+</resources>

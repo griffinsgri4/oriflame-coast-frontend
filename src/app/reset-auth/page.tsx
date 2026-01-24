@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { removeAuthToken, removeStoredUser } from '@/lib/authStorage';
 
 export default function ResetAuthPage() {
   const router = useRouter();
@@ -17,8 +18,8 @@ export default function ResetAuthPage() {
       } finally {
         try {
           // Clear client-side credentials and any persisted session state
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
+          removeAuthToken();
+          removeStoredUser();
           localStorage.removeItem('cart');
           localStorage.removeItem('intended_path');
         } catch (_) {}

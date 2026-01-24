@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { Product, Order, User, ApiResponse, PaginatedResponse, Category } from './types';
+import { getAuthToken, removeAuthToken, removeStoredUser } from './authStorage';
 
 // API Configuration
 const API_BASE_URL =
@@ -73,7 +74,7 @@ apiClient.interceptors.request.use(
       await getCsrfToken();
     }
 
-    const token = localStorage.getItem('auth_token');
+    const token = await getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -92,8 +93,8 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       // Unauthorized - clear token; redirect only on protected routes
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      removeAuthToken();
+      removeStoredUser();
       if (typeof window !== 'undefined') {
         const path = window.location.pathname;
         const protectedRoute = /^\/(admin|dashboard|orders|profile)(\/|$)/.test(path);
