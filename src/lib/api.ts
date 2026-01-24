@@ -18,7 +18,23 @@ const toAbsoluteUrl = (value: any): any => {
   if (typeof value !== 'string') return value;
   const v = value.trim();
   if (!v) return v;
-  if (/^https?:\/\//i.test(v)) return v;
+
+  const toPublicProductImageUrl = (raw: string): string | null => {
+    const m = raw.match(/\/storage\/products\/(\d+)\/([^\/?#]+)$/);
+    if (!m) return null;
+    const [, productId, filename] = m;
+    return `${SANCTUM_BASE_URL}/api/products/${productId}/images/${filename}`;
+  };
+
+  if (/^https?:\/\//i.test(v)) {
+    return toPublicProductImageUrl(v) ?? v;
+  }
+
+  if (v.startsWith('/storage/')) {
+    return toPublicProductImageUrl(`${SANCTUM_BASE_URL}${v}`) ?? `${SANCTUM_BASE_URL}${v}`;
+  }
+
+  if (v.startsWith('/api/')) return `${SANCTUM_BASE_URL}${v}`;
   if (v.startsWith('/')) return `${SANCTUM_BASE_URL}${v}`;
   return v;
 };
