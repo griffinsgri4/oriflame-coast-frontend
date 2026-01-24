@@ -1,12 +1,17 @@
+'use client';
+
 import Link from 'next/link';
-import { User, ShoppingBag, Heart, Settings, LogOut } from 'lucide-react';
+import { User, ShoppingBag, Settings, LogOut } from 'lucide-react';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, logout } = useAuth();
+
   return (
     <div className="relative isolate">
       <div className="absolute inset-0 -z-20">
@@ -28,8 +33,8 @@ export default function DashboardLayout({
                 <User className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h2 className="font-medium">Jane Smith</h2>
-                <p className="text-sm text-muted-foreground">jane.smith@example.com</p>
+                <h2 className="font-medium">{user?.name || 'Account'}</h2>
+                <p className="text-sm text-muted-foreground">{user?.email || ''}</p>
               </div>
             </div>
 
@@ -42,26 +47,20 @@ export default function DashboardLayout({
                 My Orders
               </Link>
               <Link
-                href="/dashboard/wishlist"
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-              >
-                <Heart className="h-4 w-4" />
-                Wishlist
-              </Link>
-              <Link
                 href="/dashboard/settings"
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
               >
                 <Settings className="h-4 w-4" />
                 Account Settings
               </Link>
-              <Link
-                href="/"
+              <button
+                type="button"
+                onClick={logout}
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-500/10"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
-              </Link>
+              </button>
             </nav>
           </aside>
 

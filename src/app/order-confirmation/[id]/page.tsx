@@ -3,14 +3,15 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
-import { Order } from '@/lib/types';
+import { ApiResponse, Order } from '@/lib/types';
 
 const OrderConfirmationPage = () => {
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
 
-  const { data: order, loading, error } = useApi<Order>(`/orders/${orderId}`);
+  const { data: orderResponse, loading, error } = useApi<ApiResponse<Order>>(`/my-orders/${orderId}`);
+  const order = (orderResponse as any)?.data as any;
 
   if (loading) {
     return (
@@ -92,7 +93,7 @@ const OrderConfirmationPage = () => {
           <div className="px-8 py-6">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Order Items</h3>
             <div className="space-y-4">
-              {order.items.map((item) => (
+              {((order.order_items ?? order.orderItems ?? order.items ?? []) as any[]).map((item) => (
                 <div key={item.id} className="flex items-center space-x-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                   <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shadow-sm">
                     <img
@@ -115,24 +116,33 @@ const OrderConfirmationPage = () => {
 
           {/* Order Summary */}
           <div className="bg-gradient-to-r from-gray-50 to-green-50 px-8 py-6 border-t border-gray-200">
-            <div className="space-y-3">
-              <div className="flex justify-between text-base text-gray-700">
-                <span>Subtotal</span>
-                <span className="font-medium">${order.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base text-gray-700">
-                <span>Shipping</span>
-                <span className="font-medium">${order.shipping_cost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base text-gray-700">
-                <span>Tax</span>
-                <span className="font-medium">${order.tax_amount.toFixed(2)}</span>
-              </div>
-              <div className="border-t border-gray-300 pt-3 flex justify-between text-xl font-bold text-gray-900">
-                <span>Total</span>
-                <span className="text-[#4CAF50]">${order.total.toFixed(2)}</span>
-              </div>
-            </div>
+            {(() => {
+              const items = (order.order_items ?? order.orderItems ?? order.items ?? []) as any[];
+              const subtotal = items.reduce((sum, it) => sum + (Number(it.price ?? 0) * Number(it.quantity ?? 0)), 0);
+              const shipping = 0;
+              const tax = 0;
+              const total = Number(order.total ?? subtotal);
+              return (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-base text-gray-700">
+                    <span>Subtotal</span>
+                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-base text-gray-700">
+                    <span>Shipping</span>
+                    <span className="font-medium">${shipping.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-base text-gray-700">
+                    <span>Tax</span>
+                    <span className="font-medium">${tax.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-gray-300 pt-3 flex justify-between text-xl font-bold text-gray-900">
+                    <span>Total</span>
+                    <span className="text-[#4CAF50]">${total.toFixed(2)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Shipping Information */}
@@ -140,13 +150,26 @@ const OrderConfirmationPage = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Shipping Information</h3>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="text-sm text-gray-700 space-y-1">
-                <p className="font-semibold text-gray-900 text-base">{order.shipping_address.first_name} {order.shipping_address.last_name}</p>
-                <p>{order.shipping_address.address}</p>
-                <p>{order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zip_code}</p>
-                <p>{order.shipping_address.country}</p>
-                {order.shipping_address.phone && (
-                  <p className="mt-2 font-medium">Phone: {order.shipping_address.phone}</p>
-                )}
+                {(() => {
+                  let addr: any = order.shipping_address;
+                  if (typeof addr === 'string') {
+                    try { addr = JSON.parse(addr); } catch { addr = null; }
+                  }
+                  if (addr && typeof addr === 'object') {
+                    return (
+                      <>
+                        <p className="font-semibold text-gray-900 text-base">{addr.first_name} {addr.last_name}</p>
+                        <p>{addr.address}</p>
+                        <p>{addr.city}, {addr.state} {addr.zip_code}</p>
+                        <p>{addr.country}</p>
+                        {addr.phone && (
+                          <p className="mt-2 font-medium">Phone: {addr.phone}</p>
+                        )}
+                      </>
+                    );
+                  }
+                  return <p>{order.shipping_address || '-'}</p>;
+                })()}
               </div>
             </div>
           </div>

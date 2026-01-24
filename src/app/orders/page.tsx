@@ -13,10 +13,29 @@ export default function OrdersPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [trackId, setTrackId] = useState<number | null>(null);
-  const { data: trackResponse, loading: trackLoading, error: trackError, execute: executeTrack } = useApi<ApiResponse<Order>>(() => api.orders.getById(trackId!), { immediate: false });
+  const { loading: trackLoading, error: trackError, execute: executeTrack } = useApi<ApiResponse<Order>>(() => api.orders.myOrderById(trackId!), { immediate: false });
 
-  const { data: ordersResponse, loading: ordersLoading, error: ordersError } = useApi<PaginatedResponse<Order>>('/orders', { page: 1, per_page: 10 });
-  const orders = ordersResponse?.data || [];
+  const { data: ordersResponse, loading: ordersLoading, error: ordersError } = useApi<ApiResponse<PaginatedResponse<any>>>('/my-orders', { page: 1, per_page: 10 });
+
+  const normalizeOrder = (o: any): any => {
+    const items = (o?.order_items ?? o?.orderItems ?? o?.items ?? []) as any[];
+    let shippingAddress: any = o?.shipping_address;
+    if (typeof shippingAddress === 'string') {
+      try { shippingAddress = JSON.parse(shippingAddress); } catch { shippingAddress = null; }
+    }
+    const subtotal = items.reduce((sum, it) => sum + (Number(it.price ?? 0) * Number(it.quantity ?? 0)), 0);
+    return {
+      ...o,
+      items,
+      shipping_address: shippingAddress,
+      subtotal,
+      shipping_cost: 0,
+      tax_amount: 0,
+      total: Number(o?.total ?? subtotal),
+    };
+  };
+
+  const orders = (ordersResponse?.data?.data ?? []).map(normalizeOrder);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -52,7 +71,7 @@ export default function OrdersPage() {
     setTrackId(idNum);
     try {
       const res = await executeTrack();
-      setSearchResults(res?.data ?? null);
+      setSearchResults(res?.data ? normalizeOrder(res.data as any) : null);
     } finally {
       setSearchLoading(false);
     }
@@ -192,7 +211,7 @@ export default function OrdersPage() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      {order.items.slice(0, 3).map((item) => (
+                      {order.items.slice(0, 3).map((item: any) => (
                         item.product?.image ? (
                           <img
                             key={item.id}

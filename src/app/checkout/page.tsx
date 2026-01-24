@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
+import { withAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 import { PageLoading, ButtonLoading } from '@/components/ui/Loading';
 import ErrorDisplay, { ValidationError } from '@/components/ui/ErrorDisplay';
 
@@ -77,7 +79,7 @@ const kenyanCounties = [
   'Mutomo', 'Ikutha'
 ];
 
-export default function CheckoutPage() {
+function CheckoutPage() {
   const router = useRouter();
   const { cart, clearCart } = useCart();
   const items = cart.items;
@@ -86,8 +88,6 @@ export default function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState<'shipping' | 'payment' | 'review'>('shipping');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('mpesa');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [orderId, setOrderId] = useState<string>('');
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: '',
@@ -110,10 +110,10 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0 && !orderComplete) {
+    if (items.length === 0) {
       router.push('/shop');
     }
-  }, [items, router, orderComplete]);
+  }, [items, router]);
 
   const shippingCost = total > 50 ? 0 : 5.99;
   const tax = total * 0.16; // 16% VAT in Kenya
@@ -171,14 +171,35 @@ export default function CheckoutPage() {
     try {
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate order ID
-      const newOrderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-      setOrderId(newOrderId);
-      
-      // Clear cart and show success
+
+      const orderPayload = {
+        items: items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        shipping_address: {
+          first_name: shippingAddress.firstName,
+          last_name: shippingAddress.lastName,
+          email: shippingAddress.email,
+          phone: shippingAddress.phone,
+          address: shippingAddress.address,
+          city: shippingAddress.city,
+          state: shippingAddress.county,
+          zip_code: shippingAddress.postalCode,
+          country: 'Kenya',
+        },
+        payment_method: selectedPaymentMethod,
+      };
+
+      const response = await api.orders.create(orderPayload as any);
+      const createdOrderId = (response as any)?.data?.id;
+      if (!createdOrderId) {
+        throw new Error('Order creation failed');
+      }
+
       clearCart();
-      setOrderComplete(true);
+      router.push(`/order-confirmation/${createdOrderId}`);
       
     } catch (error: any) {
       console.error('Payment failed:', error);
@@ -188,42 +209,6 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
-
-  if (orderComplete) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-100 p-8 text-center">
-          <div className="w-20 h-20 bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
-          <p className="text-gray-600 mb-6">
-            Thank you for your purchase. Your order has been successfully placed.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-600 mb-1">Order Number</p>
-            <p className="font-mono text-lg font-semibold text-gray-900">{orderId}</p>
-          </div>
-          <div className="space-y-3">
-            <Link 
-              href="/orders"
-              className="block w-full bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] text-white py-3 px-6 rounded-lg font-medium hover:from-[#45a049] hover:to-[#6d4bb8] transition-all duration-200"
-            >
-              Track Your Order
-            </Link>
-            <Link 
-              href="/shop"
-              className="block w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-            >
-              Continue Shopping
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -723,3 +708,5 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+export default withAuth(CheckoutPage, '/login');

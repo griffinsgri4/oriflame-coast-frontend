@@ -69,8 +69,13 @@ export function useApi<T>(
         } else if (endpoint.startsWith('/products/')) {
           const productId = endpoint.split('/')[2];
           result = await api.products.getById(parseInt(productId)) as T;
-        } else if (endpoint === '/orders' || endpoint === '/my-orders') {
+        } else if (endpoint === '/orders') {
           result = await api.orders.getAll(params) as T;
+        } else if (endpoint === '/my-orders') {
+          result = await api.orders.myOrders(params) as T;
+        } else if (endpoint.startsWith('/my-orders/')) {
+          const orderId = endpoint.split('/')[2];
+          result = await api.orders.myOrderById(parseInt(orderId)) as T;
         } else if (endpoint.startsWith('/orders/')) {
           const orderId = endpoint.split('/')[2];
           result = await api.orders.getById(parseInt(orderId)) as T;

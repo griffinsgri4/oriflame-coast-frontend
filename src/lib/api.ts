@@ -331,7 +331,7 @@ export const api = {
       per_page?: number;
       status?: string;
       sort?: string;
-    }): Promise<PaginatedResponse<Order>> => {
+    }): Promise<ApiResponse<PaginatedResponse<Order>>> => {
       const response = await apiClient.get('/orders', { params });
       return response.data;
     },
@@ -341,13 +341,28 @@ export const api = {
       return response.data;
     },
 
+    myOrders: async (params?: {
+      page?: number;
+      per_page?: number;
+      status?: string;
+      sort?: string;
+    }): Promise<ApiResponse<PaginatedResponse<Order>>> => {
+      const response = await apiClient.get('/my-orders', { params });
+      return response.data;
+    },
+
+    myOrderById: async (id: number): Promise<ApiResponse<Order>> => {
+      const response = await apiClient.get(`/my-orders/${id}`);
+      return response.data;
+    },
+
     create: async (orderData: {
       items: Array<{
         product_id: number;
         quantity: number;
         price: number;
       }>;
-      shipping_address: string;
+      shipping_address: any;
       payment_method: string;
     }): Promise<ApiResponse<Order>> => {
       const response = await apiClient.post('/orders', orderData);

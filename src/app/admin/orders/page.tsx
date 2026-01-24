@@ -22,17 +22,6 @@ function AdminOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Mock order data as fallback
-  const mockOrders: UIOrder[] = [
-     { id: 'ORD-1234', customer: 'Jane Smith', date: '2023-10-05', total: 78.97, status: 'delivered' },
-     { id: 'ORD-1235', customer: 'John Doe', date: '2023-10-05', total: 124.50, status: 'processing' },
-     { id: 'ORD-1236', customer: 'Alice Johnson', date: '2023-10-04', total: 54.25, status: 'shipped' },
-     { id: 'ORD-1237', customer: 'Robert Brown', date: '2023-10-04', total: 210.99, status: 'processing' },
-     { id: 'ORD-1238', customer: 'Emily Davis', date: '2023-10-03', total: 45.50, status: 'delivered' },
-     { id: 'ORD-1239', customer: 'Michael Wilson', date: '2023-10-02', total: 89.99, status: 'delivered' },
-     { id: 'ORD-1240', customer: 'Sarah Taylor', date: '2023-10-01', total: 132.75, status: 'cancelled' },
-   ];
-
   // Fetch orders from backend
   const fetchOrders = async () => {
     try {
@@ -47,29 +36,23 @@ function AdminOrdersPage() {
       if (searchTerm) params.search = searchTerm;
       if (selectedStatus !== 'All') params.status = selectedStatus.toLowerCase();
       
-      const response = await api.orders.getAll(params);
-      
-      if (response.data) {
-        // Transform the data to match the expected UI format
-        const transformedOrders: UIOrder[] = response.data.map((order: any) => ({
-           id: order.order_number || order.id,
-           customer: order.user ? `${order.user.first_name} ${order.user.last_name}` : 'Unknown Customer',
-           date: new Date(order.created_at).toLocaleDateString(),
-           total: parseFloat(order.total),
-           status: order.status
-         }));
-        
-         setOrders(transformedOrders);
-         setTotalPages(response.meta?.last_page || 1);
-       } else {
-         // Fallback to mock data
-         setOrders(mockOrders);
-       }
+      const payload = await api.orders.getAll(params);
+      const rows = payload?.data?.data || [];
+
+      const transformedOrders: UIOrder[] = rows.map((order: any) => ({
+        id: String(order.id),
+        customer: order.user?.name || order.user?.email || 'Unknown Customer',
+        date: order.created_at ? new Date(order.created_at).toLocaleDateString() : '-',
+        total: parseFloat(order.total ?? 0),
+        status: order.status || 'pending',
+      }));
+
+      setOrders(transformedOrders);
+      setTotalPages(payload?.data?.meta?.last_page || 1);
     } catch (err: any) {
       console.error('Error fetching orders:', err);
-      // Fallback to mock data on error
-      setOrders(mockOrders);
-      setError('Using sample data. Please check your connection.');
+      setOrders([]);
+      setError(err?.response?.data?.message || 'Failed to load orders.');
     } finally {
       setLoading(false);
     }
