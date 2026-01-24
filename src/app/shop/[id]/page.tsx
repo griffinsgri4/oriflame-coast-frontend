@@ -120,9 +120,10 @@ export default function ProductDetailPage() {
   const stockQty = ((typeof displayProduct.stock === 'number' ? displayProduct.stock : displayProduct.stock?.quantity) ?? 0);
 
   const productImages = useMemo(() => {
-    const images = (Array.isArray(displayProduct.gallery) ? displayProduct.gallery : []).filter(Boolean);
+    const images = (Array.isArray(displayProduct.gallery) ? displayProduct.gallery : [])
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
     if (images.length > 0) return images;
-    return displayProduct.image ? [displayProduct.image] : [];
+    return typeof displayProduct.image === 'string' && displayProduct.image.trim().length > 0 ? [displayProduct.image] : [];
   }, [displayProduct.gallery, displayProduct.image]);
 
   useEffect(() => {
@@ -213,10 +214,19 @@ export default function ProductDetailPage() {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="aspect-square bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              {productImages.length > 0 ? (
-                (/^https?:\/\//i.test(productImages[selectedImageIndex]) ? (
+              {productImages.length > 0 ? (() => {
+                const selectedSrc = productImages[selectedImageIndex] ?? productImages[0];
+                if (!selectedSrc) {
+                  return (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4CAF50]/10 to-[#7E57C2]/10">
+                      <div className="text-5xl text-gray-400">📦</div>
+                    </div>
+                  );
+                }
+
+                return /^https?:\/\//i.test(selectedSrc) ? (
                   <img
-                    src={productImages[selectedImageIndex]}
+                    src={selectedSrc}
                     alt={displayProduct.name}
                     className="w-full h-full object-cover"
                     loading="eager"
@@ -224,15 +234,15 @@ export default function ProductDetailPage() {
                   />
                 ) : (
                   <Image
-                    src={productImages[selectedImageIndex]}
+                    src={selectedSrc}
                     alt={displayProduct.name}
                     width={600}
                     height={600}
                     className="w-full h-full object-cover"
                     priority
                   />
-                ))
-              ) : (
+                );
+              })() : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4CAF50]/10 to-[#7E57C2]/10">
                   <div className="text-5xl text-gray-400">📦</div>
                 </div>
