@@ -198,6 +198,14 @@ function CheckoutPage() {
         throw new Error('Order creation failed');
       }
 
+      if (selectedPaymentMethod === 'mpesa') {
+        const phone = paymentDetails.mpesa?.phoneNumber || shippingAddress.phone;
+        if (!phone) {
+          throw new Error('M-Pesa phone number is required');
+        }
+        await api.payments.mpesa.stkPush({ order_id: Number(createdOrderId), phone });
+      }
+
       clearCart();
       router.push(`/order-confirmation/${createdOrderId}`);
       

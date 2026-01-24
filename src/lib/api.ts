@@ -488,6 +488,19 @@ export const api = {
       return response.data;
     },
   },
+
+  payments: {
+    mpesa: {
+      stkPush: async (payload: { order_id: number; phone: string }): Promise<ApiResponse<any>> => {
+        const response = await apiClient.post('/payments/mpesa/stk-push', payload);
+        return response.data;
+      },
+      latestForOrder: async (orderId: number): Promise<ApiResponse<any>> => {
+        const response = await apiClient.get(`/payments/mpesa/orders/${orderId}`);
+        return response.data;
+      },
+    },
+  },
 };
 
 // Utility functions

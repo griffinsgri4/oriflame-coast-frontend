@@ -62,6 +62,16 @@ const OrderConfirmationPage = () => {
 
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+          {order?.payment_status && (
+            <div className={`px-8 py-4 border-b ${order.payment_status === 'paid' ? 'bg-green-50 border-green-100' : 'bg-yellow-50 border-yellow-100'}`}>
+              <p className="text-sm text-gray-700">
+                Payment Status: <span className="font-semibold">{String(order.payment_status).toUpperCase()}</span>
+                {String(order.payment_method || '').toLowerCase() === 'mpesa' && order.payment_status !== 'paid' && (
+                  <span className="ml-2 text-gray-600">Check your phone to complete the M-Pesa prompt, then refresh.</span>
+                )}
+              </p>
+            </div>
+          )}
           {/* Order Header */}
           <div className="bg-gradient-to-r from-gray-50 to-green-50 px-8 py-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
