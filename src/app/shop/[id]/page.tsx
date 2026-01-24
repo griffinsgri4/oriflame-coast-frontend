@@ -214,13 +214,24 @@ export default function ProductDetailPage() {
             {/* Main Image */}
             <div className="aspect-square bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {productImages.length > 0 ? (
-                <Image
-                  src={productImages[selectedImageIndex]}
-                  alt={displayProduct.name}
-                  width={600}
-                  height={600}
-                  className="w-full h-full object-cover"
-                />
+                (/^https?:\/\//i.test(productImages[selectedImageIndex]) ? (
+                  <img
+                    src={productImages[selectedImageIndex]}
+                    alt={displayProduct.name}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
+                  />
+                ) : (
+                  <Image
+                    src={productImages[selectedImageIndex]}
+                    alt={displayProduct.name}
+                    width={600}
+                    height={600}
+                    className="w-full h-full object-cover"
+                    priority
+                  />
+                ))
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#4CAF50]/10 to-[#7E57C2]/10">
                   <div className="text-5xl text-gray-400">📦</div>
@@ -242,13 +253,22 @@ export default function ProductDetailPage() {
                         : "border-gray-200 hover:border-gray-300"
                     )}
                   >
-                    <Image
-                      src={image}
-                      alt={`${displayProduct.name} ${index + 1}`}
-                      width={150}
-                      height={150}
-                      className="w-full h-full object-cover"
-                    />
+                    {/^https?:\/\//i.test(image) ? (
+                      <img
+                        src={image}
+                        alt={`${displayProduct.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Image
+                        src={image}
+                        alt={`${displayProduct.name} ${index + 1}`}
+                        width={150}
+                        height={150}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </button>
                 ))}
               </div>
