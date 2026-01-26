@@ -65,6 +65,7 @@ export const getAuthToken = async (): Promise<string | null> => {
 export const setAuthToken = async (token: string): Promise<void> => {
   if (isNative()) {
     await secureSet(TOKEN_KEY, token);
+    return;
   }
   setToLocalStorage(TOKEN_KEY, token);
 };
@@ -72,6 +73,7 @@ export const setAuthToken = async (token: string): Promise<void> => {
 export const removeAuthToken = async (): Promise<void> => {
   if (isNative()) {
     await secureRemove(TOKEN_KEY);
+    return;
   }
   removeFromLocalStorage(TOKEN_KEY);
 };
@@ -87,6 +89,7 @@ export const getStoredUserRaw = async (): Promise<string | null> => {
 export const setStoredUserRaw = async (raw: string): Promise<void> => {
   if (isNative()) {
     await secureSet(USER_KEY, raw);
+    return;
   }
   setToLocalStorage(USER_KEY, raw);
 };
@@ -94,6 +97,7 @@ export const setStoredUserRaw = async (raw: string): Promise<void> => {
 export const removeStoredUser = async (): Promise<void> => {
   if (isNative()) {
     await secureRemove(USER_KEY);
+    return;
   }
   removeFromLocalStorage(USER_KEY);
 };
