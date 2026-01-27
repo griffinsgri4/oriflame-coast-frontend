@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { hapticImpact } from '@/lib/nativeHaptics';
 
 interface AddToCartButtonProps {
   product: Product;
@@ -40,6 +41,7 @@ export default function AddToCartButton({
     try {
       addItem(product, quantity);
       setShowSuccess(true);
+      hapticImpact('light');
       
       // Hide success message after 2 seconds
       setTimeout(() => {

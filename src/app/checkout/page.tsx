@@ -8,11 +8,12 @@ import { withAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { PageLoading, ButtonLoading } from '@/components/ui/Loading';
 import ErrorDisplay, { ValidationError } from '@/components/ui/ErrorDisplay';
+import { hapticImpact } from '@/lib/nativeHaptics';
 
 interface PaymentMethod {
   id: string;
   name: string;
-  type: 'mpesa' | 'card' | 'bank';
+  type: 'mpesa' | 'bank' | 'cod';
   icon: string;
   description: string;
   fees?: string;
@@ -33,39 +34,39 @@ interface PaymentDetails {
   mpesa?: {
     phoneNumber: string;
   };
-  card?: {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
-    cardholderName: string;
-  };
 }
 
+const mpesaEnabled = process.env.NEXT_PUBLIC_MPESA_ENABLED === 'true';
+
 const paymentMethods: PaymentMethod[] = [
-  {
-    id: 'mpesa',
-    name: 'M-Pesa',
-    type: 'mpesa',
-    icon: '📱',
-    description: 'Pay securely with your M-Pesa mobile money',
-    fees: 'No additional fees'
-  },
-  {
-    id: 'card',
-    name: 'Credit/Debit Card',
-    type: 'card',
-    icon: '💳',
-    description: 'Visa, Mastercard, and other major cards accepted',
-    fees: '2.9% processing fee'
-  },
+  ...(mpesaEnabled
+    ? ([
+        {
+          id: 'mpesa',
+          name: 'M-Pesa',
+          type: 'mpesa',
+          icon: '📱',
+          description: 'Pay securely with your M-Pesa mobile money',
+          fees: 'No additional fees',
+        },
+      ] as PaymentMethod[])
+    : []),
   {
     id: 'bank',
     name: 'Bank Transfer',
     type: 'bank',
     icon: '🏦',
     description: 'Direct bank transfer (manual verification required)',
-    fees: 'No additional fees'
-  }
+    fees: 'No additional fees',
+  },
+  {
+    id: 'cod',
+    name: 'Cash on Delivery',
+    type: 'cod',
+    icon: '💵',
+    description: 'Pay when your order arrives',
+    fees: 'No additional fees',
+  },
 ];
 
 const kenyanCounties = [
@@ -86,7 +87,7 @@ function CheckoutPage() {
   const total = cart.total;
   
   const [currentStep, setCurrentStep] = useState<'shipping' | 'payment' | 'review'>('shipping');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('mpesa');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(paymentMethods[0]?.id ?? 'bank');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
@@ -102,7 +103,6 @@ function CheckoutPage() {
 
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
     mpesa: { phoneNumber: '' },
-    card: { cardNumber: '', expiryDate: '', cvv: '', cardholderName: '' }
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,17 +139,12 @@ function CheckoutPage() {
   const validatePayment = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (selectedPaymentMethod === 'mpesa') {
+    if (selectedPaymentMethod === 'mpesa' && mpesaEnabled) {
       if (!paymentDetails.mpesa?.phoneNumber.trim()) {
         newErrors.mpesaPhone = 'M-Pesa phone number is required';
       } else if (!/^(\+254|0)[17]\d{8}$/.test(paymentDetails.mpesa.phoneNumber)) {
         newErrors.mpesaPhone = 'Invalid M-Pesa phone number';
       }
-    } else if (selectedPaymentMethod === 'card') {
-      if (!paymentDetails.card?.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
-      if (!paymentDetails.card?.expiryDate.trim()) newErrors.expiryDate = 'Expiry date is required';
-      if (!paymentDetails.card?.cvv.trim()) newErrors.cvv = 'CVV is required';
-      if (!paymentDetails.card?.cardholderName.trim()) newErrors.cardholderName = 'Cardholder name is required';
     }
 
     setErrors(newErrors);
@@ -164,13 +159,14 @@ function CheckoutPage() {
     }
   };
 
-  const processPayment = async () => {
+  const placeOrder = async () => {
     setIsProcessing(true);
     setGeneralError(null);
     
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (selectedPaymentMethod === 'mpesa' && !mpesaEnabled) {
+        throw new Error('M-Pesa is not available yet');
+      }
 
       const orderPayload = {
         items: items.map((i) => ({
@@ -198,7 +194,7 @@ function CheckoutPage() {
         throw new Error('Order creation failed');
       }
 
-      if (selectedPaymentMethod === 'mpesa') {
+      if (selectedPaymentMethod === 'mpesa' && mpesaEnabled) {
         const phone = paymentDetails.mpesa?.phoneNumber || shippingAddress.phone;
         if (!phone) {
           throw new Error('M-Pesa phone number is required');
@@ -207,11 +203,12 @@ function CheckoutPage() {
       }
 
       clearCart();
+      hapticImpact('medium');
       router.push(`/order-confirmation/${createdOrderId}`);
       
     } catch (error: any) {
-      console.error('Payment failed:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Payment failed. Please try again.';
+      console.error('Checkout failed:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Checkout failed. Please try again.';
       setGeneralError(errorMessage);
     } finally {
       setIsProcessing(false);
@@ -433,7 +430,7 @@ function CheckoutPage() {
                 </div>
 
                 {/* Payment Details */}
-                {selectedPaymentMethod === 'mpesa' && (
+                {selectedPaymentMethod === 'mpesa' && mpesaEnabled && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                     <h3 className="font-medium text-gray-900 mb-4">M-Pesa Payment Details</h3>
                     <div>
@@ -458,81 +455,6 @@ function CheckoutPage() {
                   </div>
                 )}
 
-                {selectedPaymentMethod === 'card' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h3 className="font-medium text-gray-900 mb-4">Card Payment Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Cardholder Name *</label>
-                        <input
-                          type="text"
-                          value={paymentDetails.card?.cardholderName || ''}
-                          onChange={(e) => setPaymentDetails({
-                            ...paymentDetails,
-                            card: { ...paymentDetails.card!, cardholderName: e.target.value }
-                          })}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-colors ${
-                            errors.cardholderName ? 'border-red-300' : 'border-gray-200'
-                          }`}
-                          placeholder="John Doe"
-                        />
-                        {errors.cardholderName && <p className="text-red-500 text-sm mt-1">{errors.cardholderName}</p>}
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Card Number *</label>
-                        <input
-                          type="text"
-                          value={paymentDetails.card?.cardNumber || ''}
-                          onChange={(e) => setPaymentDetails({
-                            ...paymentDetails,
-                            card: { ...paymentDetails.card!, cardNumber: e.target.value }
-                          })}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-colors ${
-                            errors.cardNumber ? 'border-red-300' : 'border-gray-200'
-                          }`}
-                          placeholder="1234 5678 9012 3456"
-                        />
-                        {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date *</label>
-                        <input
-                          type="text"
-                          value={paymentDetails.card?.expiryDate || ''}
-                          onChange={(e) => setPaymentDetails({
-                            ...paymentDetails,
-                            card: { ...paymentDetails.card!, expiryDate: e.target.value }
-                          })}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-colors ${
-                            errors.expiryDate ? 'border-red-300' : 'border-gray-200'
-                          }`}
-                          placeholder="MM/YY"
-                        />
-                        {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">CVV *</label>
-                        <input
-                          type="text"
-                          value={paymentDetails.card?.cvv || ''}
-                          onChange={(e) => setPaymentDetails({
-                            ...paymentDetails,
-                            card: { ...paymentDetails.card!, cvv: e.target.value }
-                          })}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-colors ${
-                            errors.cvv ? 'border-red-300' : 'border-gray-200'
-                          }`}
-                          placeholder="123"
-                        />
-                        {errors.cvv && <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {selectedPaymentMethod === 'bank' && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
                     <h3 className="font-medium text-gray-900 mb-4">Bank Transfer Details</h3>
@@ -553,6 +475,15 @@ function CheckoutPage() {
                         <span className="font-medium">Reference:</span> Your order will be processed after payment verification
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {selectedPaymentMethod === 'cod' && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <h3 className="font-medium text-gray-900 mb-2">Cash on Delivery</h3>
+                    <p className="text-sm text-gray-700">
+                      You will pay when your order arrives. We’ll contact you to confirm delivery details.
+                    </p>
                   </div>
                 )}
 
@@ -605,11 +536,6 @@ function CheckoutPage() {
                         {selectedPaymentMethod === 'mpesa' && (
                           <p className="text-sm text-gray-600">{paymentDetails.mpesa?.phoneNumber}</p>
                         )}
-                        {selectedPaymentMethod === 'card' && (
-                          <p className="text-sm text-gray-600">
-                            **** **** **** {paymentDetails.card?.cardNumber?.slice(-4)}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -630,7 +556,7 @@ function CheckoutPage() {
                     Back to Payment
                   </button>
                   <button
-                    onClick={processPayment}
+                    onClick={placeOrder}
                     disabled={isProcessing}
                     className="bg-gradient-to-r from-[#4CAF50] to-[#7E57C2] text-white px-8 py-3 rounded-lg font-medium hover:from-[#45a049] hover:to-[#6d4bb8] transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -640,7 +566,7 @@ function CheckoutPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Processing...
+                        Placing order...
                       </>
                     ) : (
                       `Place Order - $${finalTotal.toFixed(2)}`

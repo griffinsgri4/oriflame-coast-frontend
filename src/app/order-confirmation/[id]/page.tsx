@@ -46,28 +46,50 @@ const OrderConfirmationPage = () => {
     );
   }
 
+  const paymentStatus = String(order.payment_status || '').toLowerCase();
+  const isPaid = paymentStatus === 'paid';
+  const paymentMethod = String(order.payment_method || '').toLowerCase();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Success Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-r from-[#4CAF50] to-[#45a049] mb-6 shadow-lg">
-            <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Order Confirmed!</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">Thank you for choosing Oriflame Kenya. Your order has been successfully placed and will be processed shortly.</p>
+          {isPaid ? (
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-r from-[#4CAF50] to-[#45a049] mb-6 shadow-lg">
+              <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          ) : (
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 mb-6 shadow-lg">
+              <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+            </div>
+          )}
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">{isPaid ? 'Order Confirmed' : 'Order Placed'}</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            {isPaid
+              ? "We've received your payment and will process your order shortly."
+              : 'Your order has been placed. Payment is pending and we will process your order after confirmation.'}
+          </p>
         </div>
 
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
           {order?.payment_status && (
-            <div className={`px-8 py-4 border-b ${order.payment_status === 'paid' ? 'bg-green-50 border-green-100' : 'bg-yellow-50 border-yellow-100'}`}>
+            <div className={`px-8 py-4 border-b ${isPaid ? 'bg-green-50 border-green-100' : 'bg-yellow-50 border-yellow-100'}`}>
               <p className="text-sm text-gray-700">
                 Payment Status: <span className="font-semibold">{String(order.payment_status).toUpperCase()}</span>
-                {String(order.payment_method || '').toLowerCase() === 'mpesa' && order.payment_status !== 'paid' && (
+                {paymentMethod === 'mpesa' && !isPaid && (
                   <span className="ml-2 text-gray-600">Check your phone to complete the M-Pesa prompt, then refresh.</span>
+                )}
+                {paymentMethod === 'bank' && !isPaid && (
+                  <span className="ml-2 text-gray-600">Complete a bank transfer using the details below. We verify manually.</span>
+                )}
+                {paymentMethod === 'cod' && !isPaid && (
+                  <span className="ml-2 text-gray-600">You will pay on delivery.</span>
                 )}
               </p>
             </div>
@@ -199,9 +221,23 @@ const OrderConfirmationPage = () => {
         <div className="mt-8 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-8 border border-blue-100 shadow-sm">
           <h3 className="text-xl font-bold text-gray-900 mb-4">What's Next?</h3>
           <div className="text-base text-gray-700 space-y-3">
+            {!isPaid && paymentMethod === 'bank' && (
+              <div className="bg-white/70 border border-gray-200 rounded-lg p-4 text-sm">
+                <div className="font-semibold text-gray-900 mb-2">Bank Transfer Instructions</div>
+                <div className="space-y-1 text-gray-700">
+                  <div><span className="font-medium">Bank:</span> Equity Bank Kenya</div>
+                  <div><span className="font-medium">Account Name:</span> Oriflame Coast Region</div>
+                  <div><span className="font-medium">Account Number:</span> 0123456789</div>
+                  <div><span className="font-medium">Branch:</span> Mombasa Branch</div>
+                  <div><span className="font-medium">Reference:</span> ORDER-{order.id}</div>
+                </div>
+                <div className="mt-2 text-gray-600">We’ll verify your transfer and update your order status.</div>
+              </div>
+            )}
+
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-2 h-2 bg-[#4CAF50] rounded-full mt-2"></div>
-              <p>You will receive an email confirmation shortly with your order details.</p>
+              <p>{isPaid ? 'You will receive an email confirmation shortly with your order details.' : 'Your order has been received. We will confirm the next steps shortly.'}</p>
             </div>
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-2 h-2 bg-[#4CAF50] rounded-full mt-2"></div>
@@ -236,7 +272,7 @@ const OrderConfirmationPage = () => {
             onClick={() => window.print()}
             className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 font-semibold text-lg"
           >
-            Print Receipt
+            Print Order
           </button>
         </div>
       </div>
